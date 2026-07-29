@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de Carruseles — Foto Fast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --paper:#FAF9F4;
+    --grid:#D7E1EE;
+    --margin-red:#C8433F;
+    --ink:#1F2A44;
+    --ink-soft:#4A5670;
+    --highlighter:#F4C95D;
+    --teal:#3E8E7E;
+    --card:#FFFFFF;
+    --danger:#C8433F;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/100% 32px,
+      var(--paper);
+    min-height:100vh;
+  }
+  .binder{
+    position:fixed; left:0; top:0; bottom:0; width:56px;
+    background:var(--paper);
+    border-right:3px solid var(--margin-red);
+    z-index:5;
+  }
+  .binder::before{
+    content:'';
+    position:absolute; left:26px; top:0; bottom:0; width:0;
+    border-left:2px dashed #cbb8a0;
+  }
+  .hole{
+    position:absolute; left:20px; width:12px; height:12px; border-radius:50%;
+    background:var(--paper); box-shadow: inset 0 0 0 2px #d8cdb8;
+  }
+  main{ margin-left:56px; max-width:1180px; padding:40px 32px 100px; }
+  header{ margin-bottom:36px; }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.08em;
+    color:var(--teal); text-transform:uppercase; margin:0 0 6px;
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif; font-size:34px; font-weight:700;
+    margin:0 0 8px; line-height:1.15;
+  }
+  .sub{ color:var(--ink-soft); font-size:15px; max-width:560px; margin:0; }
+
+  .panel{
+    background:var(--card); border:1px solid #E7E1D3; border-radius:14px;
+    padding:24px; margin-bottom:24px;
+    box-shadow:0 1px 0 rgba(31,42,68,.03);
+  }
+  .panel h2{
+    font-family:'Space Grotesk',sans-serif; font-size:17px; margin:0 0 16px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .tag{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; background:var(--highlighter);
+    color:var(--ink); padding:2px 7px; border-radius:4px;
+  }
+
+  .dropzone{
+    border:2px dashed #C9BFA6; border-radius:12px; padding:28px;
+    text-align:center; cursor:pointer; transition:.15s; background:#FEFDFB;
+  }
+  .dropzone.drag{ border-color:var(--teal); background:#F0F8F6; }
+  .dropzone p{ margin:6px 0 0; color:var(--ink-soft); font-size:13px; }
+  .dropzone strong{ font-size:14px; }
+  #fileInput{ display:none; }
+  .preview-row{ display:flex; gap:16px; align-items:center; margin-top:16px; }
+  #previewImg{ width:88px; height:88px; object-fit:cover; border-radius:10px; border:1px solid #E7E1D3; }
+  .preview-meta{ font-size:13px; color:var(--ink-soft); }
+  .preview-meta b{ color:var(--ink); }
+
+  .row{ display:flex; gap:20px; flex-wrap:wrap; }
+  .field{ flex:1; min-width:200px; }
+  .field label{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:11px;
+    text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); margin-bottom:8px;
+  }
+  select, input[type=text]{
+    width:100%; padding:10px 12px; border-radius:8px; border:1px solid #DAD2BC;
+    font-family:'Inter',sans-serif; font-size:14px; background:#fff; color:var(--ink);
+  }
+  .swatches{ display:flex; gap:10px; }
+  .swatch{
+    width:40px; height:40px; border-radius:9px; cursor:pointer; border:2px solid transparent;
+    display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .swatch.active{ border-color:var(--ink); }
+
+  button.primary{
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px;
+    background:var(--ink); color:#fff; border:none; padding:14px 22px; border-radius:10px;
+    cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+  }
+  button.primary:disabled{ opacity:.5; cursor:default; }
+  button.primary:hover:not(:disabled){ background:#324066; }
+  button.secondary{
+    font-family:'Inter',sans-serif; font-weight:600; font-size:13px;
+    background:#fff; color:var(--ink); border:1px solid #DAD2BC; padding:9px 14px;
+    border-radius:8px; cursor:pointer;
+  }
+  button.secondary:hover{ border-color:var(--ink); }
+
+  .status{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); margin-top:10px; min-height:16px; }
+  .status.err{ color:var(--danger); }
+
+  .caption-box{
+    background:#FBF7EE; border:1px solid #EADFC4; border-radius:10px; padding:16px;
+    font-size:14px; line-height:1.55; white-space:pre-wrap; margin-top:10px;
+  }
+  .hashtags{ color:var(--teal); font-family:'IBM Plex Mono',monospace; font-size:12px; margin-top:8px; }
+
+  .slides-grid{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:18px; margin-top:18px;
+  }
+  .slide-card{ background:#fff; border:1px solid #E7E1D3; border-radius:12px; overflow:hidden; }
+  .slide-card canvas{ width:100%; display:block; background:#eee; }
+  .slide-card .foot{ padding:10px 12px; display:flex; justify-content:space-between; align-items:center; }
+  .slide-card .foot span{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); }
+
+  .toolbar-bottom{ display:flex; gap:12px; margin-top:20px; align-items:center; }
+  .hint{ font-size:12px; color:var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<div class="binder"></div>
+
+<main>
+  <header>
+    <p class="eyebrow">Foto Fast · Herramienta interna</p>
+    <h1>Generador de carruseles</h1>
+    <p class="sub">Sube la foto de un producto y arma un carrusel con copy y diseño listo para Instagram y Facebook.</p>
+  </header>
+
+  <section class="panel">
+    <h2>1. Foto del producto <span class="tag">requerido</span></h2>
+    <div class="dropzone" id="dropzone">
+      <strong>Arrastra la imagen aquí o haz clic para elegir</strong>
+      <p>JPG o PNG, idealmente fondo limpio</p>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    <div class="preview-row" id="previewRow" style="display:none;">
+      <img id="previewImg" alt="Vista previa">
+      <div class="preview-meta">
+        <div><b id="fileName"></b></div>
+        <div id="fileDims"></div>
+      </div>
+      <button class="secondary" id="changeImgBtn">Cambiar imagen</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>2. Configuración</h2>
+    <div class="row">
+      <div class="field">
+        <label>Cantidad de slides</label>
+        <select id="slideCount">
+          <option value="3">3</option>
+          <option value="4" selected>4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Objetivo del post</label>
+        <select id="goal">
+          <option value="vender">Vender el producto</option>
+          <option value="catalogo">Mostrar catálogo / variedad</option>
+          <option value="promocion">Promoción o descuento</option>
+          <option value="empresas">Venta a empresas (B2B)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Detalle extra (opcional)</label>
+        <input type="text" id="extraInfo" placeholder="ej: precio, plazo de entrega, código de descuento">
+      </div>
+    </div>
+    <div class="row" style="margin-top:18px;">
+      <div class="field">
+        <label>Estilo de fondo</label>
+        <div class="swatches" id="bgSwatches">
+          <div class="swatch active" data-style="grid" style="background:#1F2A44;">Papel</div>
+          <div class="swatch" data-style="ink" style="background:#1F2A44;">Tinta</div>
+          <div class="swatch" data-style="warm" style="background:#C8433F;">Cálido</div>
+          <div class="swatch" data-style="blur" style="background:#3E8E7E;">Foto</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="toolbar-bottom">
+    <button class="primary" id="generateBtn" disabled>Generar carrusel</button>
+    <span class="status" id="statusMsg"></span>
+  </div>
+
+  <section class="panel" id="resultsPanel" style="display:none;">
+    <h2>3. Resultado <span class="tag" id="productTag"></span></h2>
+    <div id="captionSection"></div>
+    <div class="slides-grid" id="slidesGrid"></div>
+    <div class="toolbar-bottom">
+      <button class="secondary" id="regenBtn">↻ Regenerar copy</button>
+      <button class="primary" id="downloadAllBtn">Descargar todo (ZIP)</button>
+      <span class="hint">Cada slide se exporta en 1080×1350px, listo para subir.</span>
+    </div>
+  </section>
+</main>
+
+<script>
+const W = 1080, H = 1350;
+let uploadedImage = null, imageBase64 = null, imageMediaType = null;
+let currentBgStyle = 'grid';
+let currentSlidesData = null;
+
+// ---------- holes on binder ----------
+(function addHoles(){
+  const binder = document.querySelector('.binder');
+  for(let y=60; y<window.innerHeight; y+=110){
+    const h = document.createElement('div');
+    h.className='hole'; h.style.top = y+'px';
+    binder.appendChild(h);
+  }
+})();
+
+// ---------- upload handling ----------
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const previewRow = document.getElementById('previewRow');
+const previewImg = document.getElementById('previewImg');
+const fileNameEl = document.getElementById('fileName');
+const fileDimsEl = document.getElementById('fileDims');
+const generateBtn = document.getElementById('generateBtn');
+const statusMsg = document.getElementById('statusMsg');
+
+dropzone.addEventListener('click', ()=>fileInput.click());
+dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e=>{
+  e.preventDefault(); dropzone.classList.remove('drag');
+  if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
+document.getElementById('changeImgBtn').addEventListener('click', ()=>fileInput.click());
+
+function handleFile(file){
+  if(!file.type.startsWith('image/')){ setStatus('Ese archivo no es una imagen.', true); return; }
+  imageMediaType = file.type;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    imageBase64 = e.target.result.split(',')[1];
+    const img = new Image();
+    img.onload = ()=>{
+      uploadedImage = img;
+      previewImg.src = e.target.result;
+      fileNameEl.textContent = file.name;
+      fileDimsEl.textContent = img.width+'×'+img.height+'px';
+      previewRow.style.display='flex';
+      dropzone.style.display='none';
+      generateBtn.disabled = false;
+      setStatus('');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ---------- background style selector ----------
+document.querySelectorAll('.swatch').forEach(sw=>{
+  sw.addEventListener('click', ()=>{
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+    sw.classList.add('active');
+    currentBgStyle = sw.dataset.style;
+    if(currentSlidesData) renderAllSlides(currentSlidesData);
+  });
+});
+
+function setStatus(msg, isErr){
+  statusMsg.textContent = msg;
+  statusMsg.className = 'status' + (isErr ? ' err' : '');
+}
+
+// ---------- Claude API call ----------
+async function generateCopy(){
+  const slideCount = document.getElementById('slideCount').value;
+  const goal = document.getElementById('goal').value;
+  const extra = document.getElementById('extraInfo').value;
+
+  const goalText = {
+    vender: 'vender el producto directamente',
+    catalogo: 'mostrar la variedad/catálogo disponible',
+    promocion: 'destacar una promoción o descuento',
+    empresas: 'atraer clientes empresa (venta B2B, compras por volumen)'
+  }[goal];
+
+  const prompt = `Eres un experto en marketing para redes sociales de una distribuidora de artículos de oficina y papelería en Chile llamada "Foto Fast". Analiza la imagen del producto adjunta y genera el contenido para un carrusel de Instagram/Facebook de exactamente ${slideCount} slides.
+
+Objetivo del post: ${goalText}.
+${extra ? 'Info adicional a incluir: ' + extra : ''}
+
+Tono: español chileno informal, cercano, directo, sin ser chabacano. Como si le hablaras a una pyme o a un encargado de oficina.
+
+Responde SOLO con un JSON válido, sin texto antes ni después, sin markdown, con esta estructura exacta:
+{
+  "product_name": "nombre corto del producto detectado",
+  "caption": "texto para el pie de foto del post, 2-4 líneas, con un llamado a la acción",
+  "hashtags": ["#tag1", "#tag2", "..."],
+  "slides": [
+    {"role": "gancho|beneficio|caracteristica|prueba_social|cta", "headline": "texto corto y punchy, máx 6 palabras", "body": "texto de apoyo, máx 18 palabras"}
+  ]
+}
+El primer slide debe ser "gancho" (llama la atención) y el último debe ser "cta" (llamado a la acción claro, ej: escríbenos, cotiza, visita el link). Genera exactamente ${slideCount} slides en total.`;
+
+  const response = await fetch("/api/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imageBase64, imageMediaType, prompt })
+  });
+
+  const data = await response.json();
+  if(data.error) throw new Error(data.error);
+  const textBlock = data.content.find(b => b.type === 'text');
+  if(!textBlock) throw new Error('Sin respuesta de texto del modelo');
+  const clean = textBlock.text.replace(/```json|```/g,'').trim();
+  return JSON.parse(clean);
+}
+
+// ---------- canvas drawing ----------
+function wrapText(ctx, text, x, y, maxWidth, lineHeight){
+  const words = text.split(' ');
+  let line = '', lines = [];
+  for(const w of words){
+    const test = line + w + ' ';
+    if(ctx.measureText(test).width > maxWidth && line !== ''){
+      lines.push(line); line = w + ' ';
+    } else { line = test; }
+  }
+  lines.push(line);
+  lines.forEach((l,i)=> ctx.fillText(l.trim(), x, y + i*lineHeight));
+  return lines.length;
+}
+
+function drawBackground(ctx, style){
+  ctx.clearRect(0,0,W,H);
+  if(style === 'grid'){
+    ctx.fillStyle = '#FAF9F4'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = '#E1E9F2'; ctx.lineWidth = 1;
+    for(let y=0; y<H; y+=42){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+    ctx.fillStyle = '#C8433F'; ctx.fillRect(110,0,4,H);
+  } else if(style === 'ink'){
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#1F2A44'); g.addColorStop(1,'#0F1626');
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  } else if(style === 'warm'){
+    const g = ctx.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,'#C8433F'); g.addColorStop(1,'#8E3230');
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  } else if(style === 'blur'){
+    ctx.fillStyle = '#1F2A44'; ctx.fillRect(0,0,W,H);
+    if(uploadedImage){
+      ctx.save();
+      ctx.filter = 'blur(30px) brightness(0.55)';
+      drawCover(ctx, uploadedImage, -40,-40, W+80, H+80);
+      ctx.restore();
+    }
+  }
+}
+
+function drawCover(ctx, img, x, y, w, h){
+  const ir = img.width/img.height, tr = w/h;
+  let sw, sh, sx, sy;
+  if(ir > tr){ sh = img.height; sw = sh*tr; sx=(img.width-sw)/2; sy=0; }
+  else { sw = img.width; sh = sw/tr; sx=0; sy=(img.height-sh)/2; }
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function drawSlide(canvas, slide, index, total, bgStyle, productName){
+  const ctx = canvas.getContext('2d');
+  canvas.width = W; canvas.height = H;
+  drawBackground(ctx, bgStyle);
+
+  const dark = (bgStyle === 'ink' || bgStyle === 'warm' || bgStyle === 'blur');
+  const textColor = dark ? '#FAF9F4' : '#1F2A44';
+  const subColor = dark ? '#D8DEEA' : '#4A5670';
+  const accent = '#F4C95D';
+
+  // product image card
+  const cardX = 90, cardY = 140, cardW = W-180, cardH = 520;
+  ctx.save();
+  roundRect(ctx, cardX, cardY, cardW, cardH, 24);
+  ctx.clip();
+  ctx.fillStyle = '#fff'; ctx.fillRect(cardX,cardY,cardW,cardH);
+  if(uploadedImage) drawCover(ctx, uploadedImage, cardX, cardY, cardW, cardH);
+  ctx.restore();
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,.25)' : 'rgba(31,42,68,.1)';
+  ctx.lineWidth = 2;
+  roundRect(ctx, cardX, cardY, cardW, cardH, 24); ctx.stroke();
+
+  // slide index tag
+  ctx.font = '600 22px "IBM Plex Mono", monospace';
+  ctx.fillStyle = accent;
+  ctx.fillText(String(index+1).padStart(2,'0') + ' / ' + String(total).padStart(2,'0'), 90, 90);
+
+  // role label
+  const roleLabels = { gancho:'MIRA ESTO', beneficio:'BENEFICIO', caracteristica:'DETALLE', prueba_social:'LO QUE DICEN', cta:'HAZLO AHORA' };
+  ctx.font = '600 20px "IBM Plex Mono", monospace';
+  ctx.fillStyle = subColor;
+  ctx.fillText(roleLabels[slide.role] || slide.role.toUpperCase(), cardX, cardY+cardH+56);
+
+  // headline
+  ctx.font = '700 56px "Space Grotesk", sans-serif';
+  ctx.fillStyle = textColor;
+  const headY = cardY+cardH+120;
+  const headLines = wrapText(ctx, slide.headline, cardX, headY, cardW, 62);
+
+  // body
+  ctx.font = '500 30px "Inter", sans-serif';
+  ctx.fillStyle = subColor;
+  wrapText(ctx, slide.body, cardX, headY + headLines*62 + 46, cardW, 40);
+
+  // footer brand
+  ctx.font = '600 22px "IBM Plex Mono", monospace';
+  ctx.fillStyle = dark ? 'rgba(255,255,255,.55)' : 'rgba(31,42,68,.4)';
+  ctx.fillText('FOTO FAST', cardX, H-60);
+  if(productName){
+    const pw = ctx.measureText('FOTO FAST').width;
+    ctx.fillStyle = accent;
+    ctx.fillText('· ' + productName.toUpperCase(), cardX+pw+14, H-60);
+  }
+}
+
+function renderAllSlides(data){
+  const grid = document.getElementById('slidesGrid');
+  grid.innerHTML = '';
+  data.slides.forEach((slide, i)=>{
+    const card = document.createElement('div');
+    card.className = 'slide-card';
+    const canvas = document.createElement('canvas');
+    card.appendChild(canvas);
+    const foot = document.createElement('div');
+    foot.className = 'foot';
+    foot.innerHTML = `<span>Slide ${i+1} · ${slide.role}</span>`;
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'secondary'; dlBtn.textContent = '↓ PNG';
+    dlBtn.onclick = ()=>{
+      const link = document.createElement('a');
+      link.download = `foto-fast-slide-${i+1}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+    foot.appendChild(dlBtn);
+    card.appendChild(foot);
+    grid.appendChild(card);
+    drawSlide(canvas, slide, i, data.slides.length, currentBgStyle, data.product_name);
+  });
+}
+
+function renderCaption(data){
+  const section = document.getElementById('captionSection');
+  section.innerHTML = `
+    <div class="caption-box">${data.caption}</div>
+    <div class="hashtags">${data.hashtags.join(' ')}</div>
+  `;
+  document.getElementById('productTag').textContent = data.product_name;
+}
+
+// ---------- generate flow ----------
+async function runGenerate(){
+  generateBtn.disabled = true;
+  setStatus('Analizando producto y escribiendo el copy…');
+  try{
+    const data = await generateCopy();
+    currentSlidesData = data;
+    document.getElementById('resultsPanel').style.display = 'block';
+    renderCaption(data);
+    renderAllSlides(data);
+    setStatus('Listo. Puedes cambiar el fondo o regenerar el copy.');
+  }catch(err){
+    console.error(err);
+    setStatus('Error al generar: ' + err.message, true);
+  }finally{
+    generateBtn.disabled = false;
+  }
+}
+
+document.getElementById('generateBtn').addEventListener('click', runGenerate);
+document.getElementById('regenBtn').addEventListener('click', runGenerate);
+
+document.getElementById('downloadAllBtn').addEventListener('click', async ()=>{
+  const zip = new JSZip();
+  const canvases = document.querySelectorAll('#slidesGrid canvas');
+  canvases.forEach((c, i)=>{
+    const dataUrl = c.toDataURL('image/png').split(',')[1];
+    zip.file(`slide-${i+1}.png`, dataUrl, {base64:true});
+  });
+  if(currentSlidesData){
+    zip.file('caption.txt', currentSlidesData.caption + '\n\n' + currentSlidesData.hashtags.join(' '));
+  }
+  const blob = await zip.generateAsync({type:'blob'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'carrusel-foto-fast.zip';
+  link.click();
+});
+</script>
+</body>
+</html>
