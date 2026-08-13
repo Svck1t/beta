@@ -428,7 +428,17 @@
       }
     } catch (err) {
       msgIngresar.className = "msg err";
-      msgIngresar.textContent = "Error de conexión: " + err.message;
+      if (err instanceof SyntaxError) {
+        // El servidor tardó demasiado y devolvió una página de error en vez de JSON.
+        // La factura puede haberse guardado igual — invalidamos la caché y avisamos.
+        registrosCache = null;
+        dashboardCargado = false;
+        msgIngresar.textContent =
+          "El servidor se demoró en responder. Antes de reintentar, revisa en 'Buscar' si la factura " +
+          payload.numero + " ya quedó registrada, para no duplicarla.";
+      } else {
+        msgIngresar.textContent = "Error de conexión: " + err.message;
+      }
     } finally {
       btnIngresar.disabled = false;
       btnIngresar.textContent = "Registrar factura";
