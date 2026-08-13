@@ -85,8 +85,8 @@
     font-family: inherit;
   }
   .seccion-nc {
-    margin-top: 14px;
-    padding: 12px;
+    margin-top: 10px;
+    padding: 10px 12px;
     border: 1px solid var(--panel-border);
     border-radius: 8px;
     background: var(--bg);
@@ -204,8 +204,8 @@
 
   .tags-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
     margin-top: 6px;
   }
   .tag-check {
@@ -215,8 +215,8 @@
     background: var(--bg);
     border: 1px solid var(--panel-border);
     border-radius: 6px;
-    padding: 8px 10px;
-    font-size: 13px;
+    padding: 7px 8px;
+    font-size: 12.5px;
     cursor: pointer;
   }
   .tag-check input { width: auto; margin: 0; }
@@ -251,13 +251,17 @@
   .modal-box {
     background: var(--panel);
     border-radius: 10px;
-    padding: 20px;
+    padding: 20px 24px;
     width: 100%;
-    max-width: 380px;
+    max-width: 640px;
+    max-height: 92vh;
+    overflow-y: auto;
   }
   .modal-box h2 { font-size: 17px; margin: 0 0 4px; }
-  .modal-box .sub { margin-bottom: 16px; }
-  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-box .sub { margin-bottom: 10px; }
+  .modal-box label { margin-top: 10px; }
+  .modal-box label:first-of-type { margin-top: 0; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 14px; }
   .modal-actions button { flex: 1; padding: 10px; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; border: none; }
   .modal-actions .guardar { background: var(--blue); color: #fff; }
   .modal-actions .cancelar { background: var(--bg); color: var(--ink-dim); border: 1px solid var(--panel-border); }
@@ -292,14 +296,14 @@
       <label for="fecha">Fecha</label>
       <input id="fecha" type="date" required />
 
-      <label style="margin-top:18px;">Bodega <span style="font-weight:400; color:var(--ink-dim);">(vacío = Aldunate, la principal)</span></label>
+      <label style="margin-top:12px;">Bodega <span style="font-weight:400; color:var(--ink-dim);">(vacío = Aldunate, la principal)</span></label>
       <div class="tags-grid" id="tags-ingresar-bodega">
         <label class="tag-check"><input type="checkbox" value="VIEL" /> Viel</label>
         <label class="tag-check"><input type="checkbox" value="SAN IGNACIO" /> San Ignacio</label>
         <label class="tag-check"><input type="checkbox" value="SAN FRANCISCO" /> San Francisco</label>
       </div>
 
-      <label style="margin-top:18px;">Proceso</label>
+      <label style="margin-top:12px;">Proceso</label>
       <div class="tags-grid" id="tags-ingresar-proceso">
         <label class="tag-check"><input type="checkbox" value="CORTE" /> Corte</label>
         <label class="tag-check"><input type="checkbox" value="RETIRO" /> Retiro</label>
@@ -307,7 +311,7 @@
         <label class="tag-check"><input type="checkbox" value="VALPARAISO" /> Valparaíso</label>
       </div>
 
-      <label style="margin-top:18px;">Documento relacionado</label>
+      <label style="margin-top:12px;">Documento relacionado</label>
       <div class="tags-grid" id="tags-ingresar-doc">
         <label class="tag-check"><input type="checkbox" value="GUIA" /> Guía</label>
         <label class="tag-check"><input type="checkbox" value="BOLETA" /> Boleta</label>
@@ -361,15 +365,20 @@
 
 <!-- MODAL EDITAR -->
 <div id="modal-overlay" class="modal-overlay">
-  <div class="modal-box" style="max-width:460px;">
+  <div class="modal-box">
     <h2>Editar factura</h2>
     <p class="sub">N° <span id="modal-numero"></span></p>
     <form id="form-editar">
-      <label for="modal-fecha">Fecha</label>
-      <input id="modal-fecha" type="date" required />
-
-      <label for="modal-hora">Hora</label>
-      <input id="modal-hora" type="time" />
+      <div class="row2">
+        <div>
+          <label for="modal-fecha">Fecha</label>
+          <input id="modal-fecha" type="date" required />
+        </div>
+        <div>
+          <label for="modal-hora">Hora</label>
+          <input id="modal-hora" type="time" />
+        </div>
+      </div>
 
       <label>Bodega <span style="font-weight:400; color:var(--ink-dim);">(vacío = Aldunate)</span></label>
       <div class="tags-grid" id="tags-modal-bodega">
@@ -378,7 +387,7 @@
         <label class="tag-check"><input type="checkbox" value="SAN FRANCISCO" /> San Francisco</label>
       </div>
 
-      <label style="margin-top:14px;">Proceso</label>
+      <label>Proceso</label>
       <div class="tags-grid" id="tags-modal-proceso">
         <label class="tag-check"><input type="checkbox" value="CORTE" /> Corte</label>
         <label class="tag-check"><input type="checkbox" value="RETIRO" /> Retiro</label>
@@ -386,7 +395,7 @@
         <label class="tag-check"><input type="checkbox" value="VALPARAISO" /> Valparaíso</label>
       </div>
 
-      <label style="margin-top:14px;">Documento relacionado</label>
+      <label>Documento relacionado</label>
       <div class="tags-grid" id="tags-modal-doc">
         <label class="tag-check"><input type="checkbox" value="GUIA" /> Guía</label>
         <label class="tag-check"><input type="checkbox" value="BOLETA" /> Boleta</label>
@@ -419,7 +428,7 @@
         </div>
       </div>
 
-      <label for="modal-observacion" style="margin-top:14px;">Observación específica (opcional)</label>
+      <label for="modal-observacion">Observación específica (opcional)</label>
       <input id="modal-observacion" type="text" />
 
       <div id="modal-msg" class="msg"></div>
