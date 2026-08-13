@@ -193,6 +193,46 @@
   th { color: var(--ink-dim); font-weight: 500; font-size: 12px; text-transform: uppercase; }
 
   .loading { color: var(--ink-dim); font-size: 14px; }
+
+  .acciones-cell { white-space: nowrap; }
+  .btn-mini {
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    color: var(--ink-dim);
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: inherit;
+    margin-right: 6px;
+  }
+  .btn-mini:hover { background: var(--bg); }
+  .btn-mini.eliminar { color: var(--err-ink); }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 16px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-box {
+    background: var(--panel);
+    border-radius: 10px;
+    padding: 20px;
+    width: 100%;
+    max-width: 380px;
+  }
+  .modal-box h2 { font-size: 17px; margin: 0 0 4px; }
+  .modal-box .sub { margin-bottom: 16px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-actions button { flex: 1; padding: 10px; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; border: none; }
+  .modal-actions .guardar { background: var(--blue); color: #fff; }
+  .modal-actions .cancelar { background: var(--bg); color: var(--ink-dim); border: 1px solid var(--panel-border); }
 </style>
 </head>
 <body>
@@ -221,16 +261,8 @@
       <label for="numero">N° Factura</label>
       <input id="numero" type="text" inputmode="numeric" required placeholder="Ej: 548025" />
 
-      <div class="row2">
-        <div>
-          <label for="fecha">Fecha</label>
-          <input id="fecha" type="date" required />
-        </div>
-        <div>
-          <label for="hora">Hora</label>
-          <input id="hora" type="time" />
-        </div>
-      </div>
+      <label for="fecha">Fecha</label>
+      <input id="fecha" type="date" required />
 
       <label for="observacion">Observación</label>
       <input id="observacion" type="text" placeholder="CORTE, RETIRO, N/C, GUIA..." />
@@ -272,10 +304,36 @@
 
 </main>
 
+<!-- MODAL EDITAR -->
+<div id="modal-overlay" class="modal-overlay">
+  <div class="modal-box">
+    <h2>Editar factura</h2>
+    <p class="sub">N° <span id="modal-numero"></span></p>
+    <form id="form-editar">
+      <label for="modal-fecha">Fecha</label>
+      <input id="modal-fecha" type="date" required />
+
+      <label for="modal-hora">Hora</label>
+      <input id="modal-hora" type="time" />
+
+      <label for="modal-observacion">Observación</label>
+      <input id="modal-observacion" type="text" />
+
+      <div id="modal-msg" class="msg"></div>
+
+      <div class="modal-actions">
+        <button type="button" class="cancelar" id="modal-cancelar">Cancelar</button>
+        <button type="submit" class="guardar" id="modal-guardar">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
   // ⚠️ Reemplaza esta URL por la de tu Apps Script Web App (paso "Implementar")
   const API_URL = "https://script.google.com/macros/s/AKfycbxchbWwNZnnx72MF5d_NZockO1XD56He_Ti-nIb3Hx7HLb_0u-gpqRTh0Vy3c23BrXl/exec";
   const DIAS = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   let registrosCache = null; // se llena la primera vez que se abre "Buscar"
 
   // ----- Navegación entre tabs -----
@@ -303,13 +361,26 @@
     e.preventDefault();
     msgIngresar.className = "msg";
     msgIngresar.textContent = "";
+
+    const numeroIngresado = document.getElementById("numero").value.trim();
+
+    // Chequeo rápido en el navegador con lo que ya tengamos cargado (no reemplaza al del servidor)
+    if (registrosCache && registrosCache.some((r) => String(r.numero) === numeroIngresado)) {
+      msgIngresar.className = "msg err";
+      msgIngresar.textContent = "Esa factura ya está registrada";
+      return;
+    }
+
     btnIngresar.disabled = true;
     btnIngresar.textContent = "Registrando...";
+
+    const ahora = new Date();
+    const horaActual = String(ahora.getHours()).padStart(2, "0") + ":" + String(ahora.getMinutes()).padStart(2, "0");
 
     const payload = {
       numero: document.getElementById("numero").value.trim(),
       fecha: document.getElementById("fecha").value,
-      hora: document.getElementById("hora").value,
+      hora: horaActual,
       observacion: document.getElementById("observacion").value.trim(),
     };
 
@@ -331,7 +402,6 @@
         // Agregarla al instante al listado local (sin esperar recarga)
         const [anio, mes, dia] = payload.fecha.split("-").map(Number);
         const fechaObj = new Date(anio, mes - 1, dia);
-        const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
         const nuevoRegistro = {
           numero: payload.numero,
           fecha: String(dia).padStart(2, "0") + "-" + String(mes).padStart(2, "0") + "-" + anio,
@@ -382,6 +452,7 @@
             <th>Observación</th>
             <th>Mes</th>
             <th>Año</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -396,6 +467,10 @@
               <td class="obs">${r.observacion || "-"}</td>
               <td>${r.mes || "-"}</td>
               <td>${r.anio || "-"}</td>
+              <td class="acciones-cell">
+                <button class="btn-mini btn-editar" data-numero="${r.numero}">Editar</button>
+                <button class="btn-mini eliminar btn-eliminar" data-numero="${r.numero}">Eliminar</button>
+              </td>
             </tr>`
             )
             .join("")}
@@ -403,6 +478,14 @@
       </table>
       <div class="resultados-count">${registros.length} factura${registros.length === 1 ? "" : "s"}</div>
     `;
+
+    // Conectar botones de acciones de esta tabla
+    el.querySelectorAll(".btn-editar").forEach((btn) => {
+      btn.addEventListener("click", () => abrirModalEditar(btn.dataset.numero));
+    });
+    el.querySelectorAll(".btn-eliminar").forEach((btn) => {
+      btn.addEventListener("click", () => eliminarFactura(btn.dataset.numero));
+    });
   }
 
   async function cargarListado() {
@@ -473,12 +556,27 @@
         return;
       }
 
-      const filas = data.ultimas
-        .map((f) => `<tr><td>${f.numero}</td><td>${f.fecha}</td><td>${f.observacion || "-"}</td></tr>`)
+      const filasMes = data.porMes
+        .map(
+          (m) => `
+        <tr>
+          <td>${m.mes}</td>
+          <td class="num">${m.total}</td>
+          <td>${m.normal}</td>
+          <td>${m.corte}</td>
+          <td>${m.guia}</td>
+          <td>${m.retiro}</td>
+          <td>${m.nc}</td>
+        </tr>`
+        )
         .join("");
 
-      const filasMes = data.porMes
-        .map((m) => `<tr><td>${m.periodo}</td><td>${m.cantidad}</td></tr>`)
+      const t = data.totalAnio;
+
+      const filasUltimas = data.ultimas
+        .map(
+          (f) => `<tr><td class="num">${f.numero}</td><td>${f.fecha}</td><td>${f.hora || "-"}</td><td class="obs">${f.observacion || "-"}</td></tr>`
+        )
         .join("");
 
       el.innerHTML = `
@@ -486,17 +584,148 @@
           <div class="kpi"><div class="num">${data.total}</div><div class="label">Facturas totales</div></div>
           <div class="kpi"><div class="num">${data.esteMes}</div><div class="label">Este mes</div></div>
         </div>
-        <div class="card" style="margin-bottom:20px;">
-          <h2 style="font-size:15px; margin-top:0;">Por mes</h2>
-          <table><thead><tr><th>Periodo</th><th>Cantidad</th></tr></thead><tbody>${filasMes}</tbody></table>
+
+        <div class="tabla-wrap" style="margin-bottom:20px;">
+          <div style="padding:16px 16px 0;">
+            <h2 style="font-size:15px; margin:0 0 2px;">Resumen anual ${data.anio}</h2>
+            <p class="sub" style="margin-bottom:12px;">Detalle mes a mes por tipo de factura.</p>
+          </div>
+          <table class="listado">
+            <thead>
+              <tr><th>Mes</th><th>Total</th><th>Normal</th><th>Corte</th><th>Guía</th><th>Retiro</th><th>N/C</th></tr>
+            </thead>
+            <tbody>
+              ${filasMes}
+              <tr style="background:var(--bg); font-weight:700;">
+                <td>TOTAL AÑO</td><td>${t.total}</td><td>${t.normal}</td><td>${t.corte}</td><td>${t.guia}</td><td>${t.retiro}</td><td>${t.nc}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div class="card">
-          <h2 style="font-size:15px; margin-top:0;">Últimas registradas</h2>
-          <table><thead><tr><th>N°</th><th>Fecha</th><th>Observación</th></tr></thead><tbody>${filas}</tbody></table>
+
+        <div class="tabla-wrap">
+          <div style="padding:16px 16px 0;">
+            <h2 style="font-size:15px; margin:0 0 12px;">Últimas registradas</h2>
+          </div>
+          <table class="listado">
+            <thead><tr><th>N°</th><th>Fecha</th><th>Hora</th><th>Observación</th></tr></thead>
+            <tbody>${filasUltimas}</tbody>
+          </table>
         </div>`;
       dashboardCargado = true;
     } catch (err) {
       el.innerHTML = `<div class="msg err">Error de conexión: ${err.message}</div>`;
+    }
+  }
+  // ----- Editar / Eliminar -----
+  const modalOverlay = document.getElementById("modal-overlay");
+  const formEditar = document.getElementById("form-editar");
+  const modalMsg = document.getElementById("modal-msg");
+  const modalGuardar = document.getElementById("modal-guardar");
+  let numeroEnEdicion = null;
+
+  function abrirModalEditar(numero) {
+    const registro = registrosCache.find((r) => String(r.numero) === String(numero));
+    if (!registro) return;
+    numeroEnEdicion = numero;
+
+    document.getElementById("modal-numero").textContent = registro.numero;
+    document.getElementById("modal-fecha").value = registro.fechaISO || "";
+    document.getElementById("modal-hora").value = registro.hora || "";
+    document.getElementById("modal-observacion").value = registro.observacion || "";
+    modalMsg.className = "msg";
+    modalMsg.textContent = "";
+    modalOverlay.classList.add("active");
+  }
+
+  function cerrarModal() {
+    modalOverlay.classList.remove("active");
+    numeroEnEdicion = null;
+  }
+
+  document.getElementById("modal-cancelar").addEventListener("click", cerrarModal);
+  modalOverlay.addEventListener("click", (e) => {
+    if (e.target === modalOverlay) cerrarModal();
+  });
+
+  formEditar.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    modalMsg.className = "msg";
+    modalMsg.textContent = "";
+    modalGuardar.disabled = true;
+    modalGuardar.textContent = "Guardando...";
+
+    const fechaVal = document.getElementById("modal-fecha").value;
+    const horaVal = document.getElementById("modal-hora").value;
+    const obsVal = document.getElementById("modal-observacion").value.trim();
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({
+          accion: "editar",
+          numero: numeroEnEdicion,
+          fecha: fechaVal,
+          hora: horaVal,
+          observacion: obsVal,
+        }),
+      });
+      const data = await res.json();
+
+      if (!data.ok) {
+        modalMsg.className = "msg err";
+        modalMsg.textContent = data.error || "No se pudo actualizar";
+        return;
+      }
+
+      // Actualizar el registro en la caché local
+      const [anio, mes, dia] = fechaVal.split("-").map(Number);
+      const fechaObj = new Date(anio, mes - 1, dia);
+      const idx = registrosCache.findIndex((r) => String(r.numero) === String(numeroEnEdicion));
+      if (idx !== -1) {
+        registrosCache[idx] = {
+          ...registrosCache[idx],
+          fecha: String(dia).padStart(2, "0") + "-" + String(mes).padStart(2, "0") + "-" + anio,
+          fechaISO: fechaVal,
+          dia: DIAS[fechaObj.getDay()],
+          hora: horaVal,
+          observacion: obsVal,
+          mes: MESES[mes - 1],
+          anio: anio,
+        };
+      }
+      renderListado(filtrar(registrosCache));
+      cerrarModal();
+    } catch (err) {
+      modalMsg.className = "msg err";
+      modalMsg.textContent = "Error de conexión: " + err.message;
+    } finally {
+      modalGuardar.disabled = false;
+      modalGuardar.textContent = "Guardar";
+    }
+  });
+
+  async function eliminarFactura(numero) {
+    if (!confirm(`¿Eliminar la factura N° ${numero}? Esta acción no se puede deshacer.`)) return;
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ accion: "eliminar", numero }),
+      });
+      const data = await res.json();
+
+      if (!data.ok) {
+        alert(data.error || "No se pudo eliminar");
+        return;
+      }
+
+      registrosCache = registrosCache.filter((r) => String(r.numero) !== String(numero));
+      renderListado(filtrar(registrosCache));
+    } catch (err) {
+      alert("Error de conexión: " + err.message);
     }
   }
 </script>
