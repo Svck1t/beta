@@ -285,6 +285,42 @@
   .modal-actions button { flex: 1; padding: 10px; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; border: none; }
   .modal-actions .guardar { background: var(--blue); color: #fff; }
   .modal-actions .cancelar { background: var(--bg); color: var(--ink-dim); border: 1px solid var(--panel-border); }
+
+  /* ----- Guía de transporte imprimible ----- */
+  .transporte-layout { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+  .transporte-form-col { flex: 1; min-width: 280px; }
+  .transporte-preview-col { flex: 1; min-width: 320px; }
+
+  #slip-print-area {
+    background: #fff;
+    color: #000;
+    border: 2px solid #000;
+    padding: 20px;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .slip-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .slip-logo { font-weight: 800; font-size: 15px; line-height: 1.2; }
+  .slip-logo .tagline { font-size: 9px; font-weight: 600; color: #444; letter-spacing: 0.03em; }
+  .slip-title { font-weight: 800; font-size: 17px; text-decoration: underline; text-align: center; flex: 1; }
+  .slip-fecha { font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .slip-fecha .valor { font-weight: 800; }
+
+  .slip-table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
+  .slip-table td { border: 1px solid #000; padding: 8px 10px; font-size: 13px; }
+  .slip-table td.label { background: #fff; font-weight: 700; width: 32%; text-align: right; }
+  .slip-table td.valor { font-weight: 800; text-align: center; font-size: 15px; }
+  .slip-table tr.grande td.valor { font-size: 20px; }
+
+  .slip-footer { margin-top: 10px; text-align: center; font-size: 10.5px; font-weight: 700; }
+
+  @media print {
+    body * { visibility: hidden; }
+    #slip-print-area, #slip-print-area * { visibility: visible; }
+    #slip-print-area {
+      position: absolute; top: 0; left: 0; width: 100%;
+      border: 2px solid #000; margin: 0;
+    }
+  }
 </style>
 </head>
 <body>
@@ -299,6 +335,7 @@
       <button class="tab-btn active" data-tab="ingresar">Ingresar</button>
       <button class="tab-btn" data-tab="buscar">Buscar</button>
       <button class="tab-btn" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn" data-tab="transporte">Transporte</button>
     </nav>
   </div>
 </header>
@@ -392,6 +429,76 @@
       <button id="btn-refrescar-dashboard" class="limpiar" type="button" style="border:1px solid var(--panel-border); border-radius:6px; padding:8px 14px; cursor:pointer; background:var(--panel); color:var(--ink-dim); font-family:inherit;">⟳ Actualizar</button>
     </div>
     <div id="dashboard-content" class="loading">Cargando...</div>
+  </section>
+
+  <!-- TRANSPORTE -->
+  <section id="tab-transporte" class="tab">
+    <h1>Guía de envío por transporte</h1>
+    <p class="sub">Completa los datos y luego imprime. La información se rellena a mano, no se guarda en la planilla.</p>
+
+    <div class="transporte-layout">
+      <div class="transporte-form-col">
+        <form id="form-transporte" class="card" onsubmit="return false;">
+          <label for="t-fecha">Fecha</label>
+          <input id="t-fecha" type="date" />
+
+          <label for="t-factura">N° de Factura</label>
+          <input id="t-factura" type="text" inputmode="numeric" placeholder="Ej: 550757" />
+
+          <label for="t-nombre">Nombre</label>
+          <input id="t-nombre" type="text" placeholder="Nombre del cliente" />
+
+          <label for="t-rut">Rut</label>
+          <input id="t-rut" type="text" placeholder="Ej: 13.131.543-0" />
+
+          <label for="t-direccion">Dirección</label>
+          <input id="t-direccion" type="text" placeholder="Ej: RETIRA EN OFICINA" />
+
+          <label for="t-ciudad">Ciudad</label>
+          <input id="t-ciudad" type="text" placeholder="Ej: Los Ángeles" />
+
+          <label for="t-fono">Fono</label>
+          <input id="t-fono" type="text" placeholder="Ej: 951389250" />
+
+          <label for="t-transporte">Transporte</label>
+          <input id="t-transporte" type="text" placeholder="Ej: Cruz del Sur" />
+
+          <label for="t-paquetes">N° Paquetes</label>
+          <input id="t-paquetes" type="text" placeholder="Ej: 2" />
+
+          <button id="btn-imprimir-transporte" class="primary" type="button" style="margin-top:16px;">🖨️ Imprimir guía</button>
+          <button id="btn-limpiar-transporte" class="limpiar" type="button" style="margin-top:8px; width:100%; padding:11px; border:1px solid var(--panel-border); border-radius:6px; background:var(--panel); color:var(--ink-dim); cursor:pointer; font-family:inherit;">Limpiar formulario</button>
+        </form>
+      </div>
+
+      <div class="transporte-preview-col">
+        <div id="slip-print-area">
+          <div class="slip-header">
+            <div class="slip-logo">
+              WL<br>Distribuidora<br>Walter Lund
+              <div class="tagline">PAPELES E INSUMOS GRÁFICOS</div>
+            </div>
+            <div class="slip-title">ENVÍO POR<br>TRANSPORTE</div>
+            <div class="slip-fecha">FECHA:<br><span class="valor" id="p-fecha">-</span></div>
+          </div>
+
+          <table class="slip-table">
+            <tr class="grande"><td class="label">N° DE FACTURA:</td><td class="valor" id="p-factura">-</td></tr>
+            <tr><td class="label">NOMBRE:</td><td class="valor" id="p-nombre">-</td></tr>
+            <tr><td class="label">RUT:</td><td class="valor" id="p-rut">-</td></tr>
+            <tr><td class="label">DIRECCIÓN:</td><td class="valor" id="p-direccion">-</td></tr>
+            <tr><td class="label">CIUDAD:</td><td class="valor" id="p-ciudad">-</td></tr>
+            <tr><td class="label">FONO:</td><td class="valor" id="p-fono">-</td></tr>
+            <tr><td class="label">TRANSPORTE:</td><td class="valor" id="p-transporte">-</td></tr>
+            <tr><td class="label">N° PAQUETES:</td><td class="valor" id="p-paquetes">&nbsp;</td></tr>
+          </table>
+
+          <div class="slip-footer">
+            (*) En caso de extravío por favor comunicarse a los siguientes contactos: 22 633 2200 / 22 665 6379 / 22 665 2021
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
 </main>
@@ -769,6 +876,60 @@
 
   // Carga inicial (la pestaña "Ingresar" es la que se ve primero al abrir la web)
   cargarListado();
+
+  // ----- Guía de Transporte (impresión) -----
+  const CAMPOS_TRANSPORTE = [
+    ["t-fecha", "p-fecha", true],
+    ["t-factura", "p-factura", false],
+    ["t-nombre", "p-nombre", false],
+    ["t-rut", "p-rut", false],
+    ["t-direccion", "p-direccion", false],
+    ["t-ciudad", "p-ciudad", false],
+    ["t-fono", "p-fono", false],
+    ["t-transporte", "p-transporte", false],
+    ["t-paquetes", "p-paquetes", false],
+  ];
+
+  function formatFechaSlip(iso) {
+    if (!iso) return "-";
+    const [anio, mes, dia] = iso.split("-");
+    return `${dia}-${mes}-${anio}`;
+  }
+
+  function actualizarVistaPrevia() {
+    CAMPOS_TRANSPORTE.forEach(([inputId, previewId, esFecha]) => {
+      const input = document.getElementById(inputId);
+      const preview = document.getElementById(previewId);
+      if (!input || !preview) return;
+      const valor = input.value.trim();
+      if (esFecha) {
+        preview.textContent = formatFechaSlip(valor);
+      } else {
+        preview.textContent = valor || "-";
+      }
+    });
+  }
+
+  CAMPOS_TRANSPORTE.forEach(([inputId]) => {
+    const input = document.getElementById(inputId);
+    if (input) input.addEventListener("input", actualizarVistaPrevia);
+  });
+
+  document.getElementById("t-fecha").value = new Date().toISOString().slice(0, 10);
+  actualizarVistaPrevia();
+
+  document.getElementById("btn-imprimir-transporte").addEventListener("click", () => {
+    window.print();
+  });
+
+  document.getElementById("btn-limpiar-transporte").addEventListener("click", () => {
+    CAMPOS_TRANSPORTE.forEach(([inputId]) => {
+      const input = document.getElementById(inputId);
+      if (input && inputId !== "t-fecha") input.value = "";
+    });
+    document.getElementById("t-fecha").value = new Date().toISOString().slice(0, 10);
+    actualizarVistaPrevia();
+  });
 
   function filtrar(registros) {
     const t = filtroTexto.value.trim().toLowerCase();
