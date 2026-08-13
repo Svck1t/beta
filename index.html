@@ -580,14 +580,29 @@
           <td class="num">${m.total}</td>
           <td>${m.normal}</td>
           <td>${m.corte}</td>
+          <td>${m.bodega}</td>
+          <td>${m.valparaiso}</td>
           <td>${m.guia}</td>
-          <td>${m.retiro}</td>
           <td>${m.nc}</td>
         </tr>`
         )
         .join("");
 
       const t = data.totalAnio;
+      const pt = data.porTipo;
+      const etiquetasTipo = [
+        ["normal", "Normal"],
+        ["corte", "Corte"],
+        ["bodega", "Bodega (Viel/San Ignacio/San Francisco/Retiro)"],
+        ["valparaiso", "Valparaíso"],
+        ["guia", "Guía"],
+        ["nc", "Nota de Crédito"],
+        ["boleta", "Boleta"],
+        ["otros", "Otros"],
+      ];
+      const filasPorTipo = etiquetasTipo
+        .map(([key, label]) => `<tr><td>${label}</td><td class="num">${pt[key]}</td></tr>`)
+        .join("");
 
       const filasUltimas = data.ultimas
         .map(
@@ -608,14 +623,24 @@
           </div>
           <table class="listado">
             <thead>
-              <tr><th>Mes</th><th>Total</th><th>Normal</th><th>Corte</th><th>Guía</th><th>Retiro</th><th>N/C</th></tr>
+              <tr><th>Mes</th><th>Total</th><th>Normal</th><th>Corte</th><th>Bodega</th><th>Valparaíso</th><th>Guía</th><th>N/C</th></tr>
             </thead>
             <tbody>
               ${filasMes}
               <tr style="background:var(--bg); font-weight:700;">
-                <td>TOTAL AÑO</td><td>${t.total}</td><td>${t.normal}</td><td>${t.corte}</td><td>${t.guia}</td><td>${t.retiro}</td><td>${t.nc}</td>
+                <td>TOTAL AÑO</td><td>${t.total}</td><td>${t.normal}</td><td>${t.corte}</td><td>${t.bodega}</td><td>${t.valparaiso}</td><td>${t.guia}</td><td>${t.nc}</td>
               </tr>
             </tbody>
+          </table>
+        </div>
+
+        <div class="tabla-wrap" style="margin-bottom:20px;">
+          <div style="padding:16px 16px 0;">
+            <h2 style="font-size:15px; margin:0 0 12px;">Facturas por tipo (histórico)</h2>
+          </div>
+          <table class="listado">
+            <thead><tr><th>Tipo</th><th>Cantidad</th></tr></thead>
+            <tbody>${filasPorTipo}</tbody>
           </table>
         </div>
 
