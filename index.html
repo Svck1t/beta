@@ -289,36 +289,41 @@
   /* ----- Guía de transporte imprimible ----- */
   .transporte-layout { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
   .transporte-form-col { flex: 1; min-width: 280px; }
-  .transporte-preview-col { flex: 1; min-width: 320px; }
+  .transporte-preview-col { flex: 1; min-width: 380px; }
 
   #slip-print-area {
     background: #fff;
     color: #000;
-    border: 2px solid #000;
-    padding: 20px;
+    border: 3px solid #000;
+    padding: 28px 32px;
     font-family: Arial, Helvetica, sans-serif;
+    max-width: 720px;
   }
-  .slip-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
-  .slip-logo { font-weight: 800; font-size: 15px; line-height: 1.2; }
-  .slip-logo .tagline { font-size: 9px; font-weight: 600; color: #444; letter-spacing: 0.03em; }
-  .slip-title { font-weight: 800; font-size: 17px; text-decoration: underline; text-align: center; flex: 1; }
-  .slip-fecha { font-weight: 700; font-size: 14px; white-space: nowrap; }
-  .slip-fecha .valor { font-weight: 800; }
+  .slip-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; gap: 12px; }
+  .slip-logo { font-weight: 800; font-size: 20px; line-height: 1.25; }
+  .slip-logo .tagline { font-size: 11px; font-weight: 600; color: #444; letter-spacing: 0.03em; margin-top: 2px; }
+  .slip-title { font-weight: 800; font-size: 26px; text-decoration: underline; text-align: center; flex: 1; line-height: 1.2; }
+  .slip-fecha { font-weight: 700; font-size: 16px; white-space: nowrap; text-align: right; }
+  .slip-fecha .valor { font-weight: 800; font-size: 20px; display: block; margin-top: 2px; }
 
-  .slip-table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
-  .slip-table td { border: 1px solid #000; padding: 8px 10px; font-size: 13px; }
-  .slip-table td.label { background: #fff; font-weight: 700; width: 32%; text-align: right; }
-  .slip-table td.valor { font-weight: 800; text-align: center; font-size: 15px; }
-  .slip-table tr.grande td.valor { font-size: 20px; }
+  .slip-table { width: 100%; border-collapse: collapse; border: 3px solid #000; }
+  .slip-table td { border: 1.5px solid #000; padding: 14px 16px; font-size: 16px; }
+  .slip-table td.label { background: #fff; font-weight: 800; width: 30%; text-align: left; }
+  .slip-table td.valor { font-weight: 800; text-align: center; font-size: 19px; }
+  .slip-table tr.grande td.valor { font-size: 32px; }
 
-  .slip-footer { margin-top: 10px; text-align: center; font-size: 10.5px; font-weight: 700; }
+  .slip-footer { margin-top: 16px; text-align: center; font-size: 13px; font-weight: 700; }
+
+  @page { margin: 15mm; }
 
   @media print {
     body * { visibility: hidden; }
     #slip-print-area, #slip-print-area * { visibility: visible; }
     #slip-print-area {
-      position: absolute; top: 0; left: 0; width: 100%;
-      border: 2px solid #000; margin: 0;
+      position: absolute; top: 0; left: 0;
+      width: 100%; max-width: none;
+      border: 3px solid #000; margin: 0;
+      padding: 10mm 12mm;
     }
   }
 </style>
