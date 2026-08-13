@@ -299,7 +299,7 @@
     font-family: Arial, Helvetica, sans-serif;
     max-width: 720px;
   }
-  .slip-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; gap: 12px; }
+  .slip-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px; }
   .slip-logo { font-weight: 800; font-size: 20px; line-height: 1.25; }
   .slip-logo .tagline { font-size: 11px; font-weight: 600; color: #444; letter-spacing: 0.03em; margin-top: 2px; }
   .slip-title { font-weight: 800; font-size: 26px; text-decoration: underline; text-align: center; flex: 1; line-height: 1.2; }
@@ -307,14 +307,14 @@
   .slip-fecha .valor { font-weight: 800; font-size: 20px; display: block; margin-top: 2px; }
 
   .slip-table { width: 100%; border-collapse: collapse; border: 3px solid #000; }
-  .slip-table td { border: 1.5px solid #000; padding: 14px 16px; font-size: 16px; }
+  .slip-table td { border: 1.5px solid #000; padding: 9px 16px; font-size: 16px; }
   .slip-table td.label { background: #fff; font-weight: 800; width: 30%; text-align: left; }
   .slip-table td.valor { font-weight: 800; text-align: center; font-size: 19px; }
   .slip-table tr.grande td.valor { font-size: 32px; }
 
-  .slip-footer { margin-top: 16px; text-align: center; font-size: 13px; font-weight: 700; }
+  .slip-footer { margin-top: 10px; text-align: center; font-size: 12px; font-weight: 700; }
 
-  @page { margin: 15mm; }
+  @page { margin: 10mm; }
 
   @media print {
     body * { visibility: hidden; }
@@ -323,7 +323,13 @@
       position: absolute; top: 0; left: 0;
       width: 100%; max-width: none;
       border: 3px solid #000; margin: 0;
-      padding: 10mm 12mm;
+      padding: 8mm 10mm;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .slip-table, .slip-table tr, .slip-header, .slip-footer {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
   }
 </style>
