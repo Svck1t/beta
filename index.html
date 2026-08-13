@@ -288,6 +288,7 @@
       </div>
       <button id="btn-filtrar" type="button">Buscar</button>
       <button id="btn-limpiar-filtro" class="limpiar" type="button">Limpiar</button>
+      <button id="btn-refrescar-listado" class="limpiar" type="button" title="Actualizar ahora">⟳ Actualizar</button>
     </div>
 
     <div class="tabla-wrap">
@@ -297,8 +298,13 @@
 
   <!-- DASHBOARD -->
   <section id="tab-dashboard" class="tab">
-    <h1>Dashboard</h1>
-    <p class="sub">Resumen general de facturas registradas.</p>
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <h1>Dashboard</h1>
+        <p class="sub">Resumen general de facturas registradas.</p>
+      </div>
+      <button id="btn-refrescar-dashboard" class="limpiar" type="button" style="border:1px solid var(--panel-border); border-radius:6px; padding:8px 14px; cursor:pointer; background:var(--panel); color:var(--ink-dim); font-family:inherit;">⟳ Actualizar</button>
+    </div>
     <div id="dashboard-content" class="loading">Cargando...</div>
   </section>
 
@@ -488,13 +494,13 @@
     });
   }
 
-  async function cargarListado() {
+  async function cargarListado(forzar) {
     const el = document.getElementById("listado-content");
-    if (registrosCache) {
+    if (registrosCache && !forzar) {
       renderListado(filtrar(registrosCache));
       return;
     }
-    el.innerHTML = '<p class="loading" style="padding:16px;">Cargando...</p>';
+    if (!registrosCache) el.innerHTML = '<p class="loading" style="padding:16px;">Cargando...</p>';
 
     try {
       const res = await fetch(`${API_URL}?action=listado`);
@@ -542,10 +548,10 @@
 
   // ----- Dashboard -----
   let dashboardCargado = false;
-  async function cargarDashboard() {
-    if (dashboardCargado) return;
+  async function cargarDashboard(forzar) {
+    if (dashboardCargado && !forzar) return;
     const el = document.getElementById("dashboard-content");
-    el.innerHTML = '<p class="loading">Cargando...</p>';
+    if (!dashboardCargado) el.innerHTML = '<p class="loading">Cargando...</p>';
 
     try {
       const res = await fetch(`${API_URL}?action=dashboard`);
@@ -728,6 +734,18 @@
       alert("Error de conexión: " + err.message);
     }
   }
+
+  // ----- Botones de actualización manual -----
+  document.getElementById("btn-refrescar-listado").addEventListener("click", () => cargarListado(true));
+  document.getElementById("btn-refrescar-dashboard").addEventListener("click", () => cargarDashboard(true));
+
+  // ----- Sincronización automática cada 45s (solo si la pestaña está visible) -----
+  setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    const activo = document.querySelector(".tab-btn.active")?.dataset.tab;
+    if (activo === "buscar") cargarListado(true);
+    if (activo === "dashboard") cargarDashboard(true);
+  }, 45000);
 </script>
 
 </body>
