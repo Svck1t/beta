@@ -74,7 +74,7 @@
 
   label { display: block; font-size: 13px; color: var(--ink-dim); margin-bottom: 4px; margin-top: 14px; }
   label:first-of-type { margin-top: 0; }
-  input {
+  input, select {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid var(--panel-border);
@@ -84,6 +84,14 @@
     color: var(--ink);
     font-family: inherit;
   }
+  .seccion-nc {
+    margin-top: 14px;
+    padding: 12px;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+  .seccion-nc.activa { border-color: var(--blue); }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
   button.primary {
@@ -284,16 +292,24 @@
       <label for="fecha">Fecha</label>
       <input id="fecha" type="date" required />
 
-      <label>Tipo (marca las que correspondan)</label>
-      <div class="tags-grid" id="tags-ingresar">
-        <label class="tag-check"><input type="checkbox" value="CORTE" /> Corte</label>
+      <label style="margin-top:18px;">Bodega <span style="font-weight:400; color:var(--ink-dim);">(vacío = Aldunate, la principal)</span></label>
+      <div class="tags-grid" id="tags-ingresar-bodega">
         <label class="tag-check"><input type="checkbox" value="VIEL" /> Viel</label>
         <label class="tag-check"><input type="checkbox" value="SAN IGNACIO" /> San Ignacio</label>
         <label class="tag-check"><input type="checkbox" value="SAN FRANCISCO" /> San Francisco</label>
+      </div>
+
+      <label style="margin-top:18px;">Proceso</label>
+      <div class="tags-grid" id="tags-ingresar-proceso">
+        <label class="tag-check"><input type="checkbox" value="CORTE" /> Corte</label>
         <label class="tag-check"><input type="checkbox" value="RETIRO" /> Retiro</label>
+        <label class="tag-check"><input type="checkbox" value="TRANSPORTE" /> Transporte</label>
         <label class="tag-check"><input type="checkbox" value="VALPARAISO" /> Valparaíso</label>
+      </div>
+
+      <label style="margin-top:18px;">Documento relacionado</label>
+      <div class="tags-grid" id="tags-ingresar-doc">
         <label class="tag-check"><input type="checkbox" value="GUIA" /> Guía</label>
-        <label class="tag-check"><input type="checkbox" value="N/C" /> Nota de Crédito</label>
         <label class="tag-check"><input type="checkbox" value="BOLETA" /> Boleta</label>
       </div>
 
@@ -355,20 +371,55 @@
       <label for="modal-hora">Hora</label>
       <input id="modal-hora" type="time" />
 
-      <label>Tipo (marca las que correspondan)</label>
-      <div class="tags-grid" id="tags-modal">
-        <label class="tag-check"><input type="checkbox" value="CORTE" /> Corte</label>
+      <label>Bodega <span style="font-weight:400; color:var(--ink-dim);">(vacío = Aldunate)</span></label>
+      <div class="tags-grid" id="tags-modal-bodega">
         <label class="tag-check"><input type="checkbox" value="VIEL" /> Viel</label>
         <label class="tag-check"><input type="checkbox" value="SAN IGNACIO" /> San Ignacio</label>
         <label class="tag-check"><input type="checkbox" value="SAN FRANCISCO" /> San Francisco</label>
+      </div>
+
+      <label style="margin-top:14px;">Proceso</label>
+      <div class="tags-grid" id="tags-modal-proceso">
+        <label class="tag-check"><input type="checkbox" value="CORTE" /> Corte</label>
         <label class="tag-check"><input type="checkbox" value="RETIRO" /> Retiro</label>
+        <label class="tag-check"><input type="checkbox" value="TRANSPORTE" /> Transporte</label>
         <label class="tag-check"><input type="checkbox" value="VALPARAISO" /> Valparaíso</label>
+      </div>
+
+      <label style="margin-top:14px;">Documento relacionado</label>
+      <div class="tags-grid" id="tags-modal-doc">
         <label class="tag-check"><input type="checkbox" value="GUIA" /> Guía</label>
-        <label class="tag-check"><input type="checkbox" value="N/C" /> Nota de Crédito</label>
         <label class="tag-check"><input type="checkbox" value="BOLETA" /> Boleta</label>
       </div>
 
-      <label for="modal-observacion">Observación específica (opcional)</label>
+      <div class="seccion-nc" id="seccion-nc">
+        <label style="margin-top:0;">Nota de Crédito</label>
+        <select id="modal-nc">
+          <option value="">Sin Nota de Crédito</option>
+          <option value="N/C">Nota de Crédito Total</option>
+          <option value="N/C P">Nota de Crédito Parcial</option>
+        </select>
+
+        <div id="modal-nc-motivo-wrap" style="display:none;">
+          <label for="modal-nc-motivo">Motivo (obligatorio)</label>
+          <select id="modal-nc-motivo">
+            <option value="">Selecciona un motivo...</option>
+            <option value="Error de digitación">Error de digitación</option>
+            <option value="Cliente anula pedido">Cliente anula pedido</option>
+            <option value="Error de precio o monto">Error de precio o monto</option>
+            <option value="Producto no despachado">Producto no despachado</option>
+            <option value="Devolución de mercadería">Devolución de mercadería</option>
+            <option value="Duplicidad de factura">Duplicidad de factura</option>
+            <option value="Cambio de condición de pago">Cambio de condición de pago</option>
+            <option value="Otro">Otro (especificar)</option>
+          </select>
+          <div id="modal-nc-motivo-otro-wrap" style="display:none;">
+            <input id="modal-nc-motivo-otro" type="text" placeholder="Especifica el motivo..." style="margin-top:8px;" />
+          </div>
+        </div>
+      </div>
+
+      <label for="modal-observacion" style="margin-top:14px;">Observación específica (opcional)</label>
       <input id="modal-observacion" type="text" />
 
       <div id="modal-msg" class="msg"></div>
@@ -388,8 +439,10 @@
   const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   let registrosCache = null; // se llena la primera vez que se abre "Buscar"
 
-  // ----- Tags (Corte, Bodega, Valparaíso, Guía, N/C, Boleta) -----
-  const TAGS_CONOCIDOS = ["CORTE", "VIEL", "SAN IGNACIO", "SAN FRANCISCO", "RETIRO", "VALPARAISO", "GUIA", "N/C", "BOLETA"];
+  // ----- Tags (Bodega / Proceso / Documento) -----
+  const TAGS_CONOCIDOS = ["CORTE", "VIEL", "SAN IGNACIO", "SAN FRANCISCO", "RETIRO", "TRANSPORTE", "VALPARAISO", "GUIA", "BOLETA", "N/C", "N/C P"];
+  const GRIDS_INGRESAR = ["tags-ingresar-bodega", "tags-ingresar-proceso", "tags-ingresar-doc"];
+  const GRIDS_MODAL = ["tags-modal-bodega", "tags-modal-proceso", "tags-modal-doc"];
 
   function wireTagGrid(gridId) {
     document.querySelectorAll(`#${gridId} input[type="checkbox"]`).forEach((cb) => {
@@ -398,19 +451,27 @@
       });
     });
   }
-  wireTagGrid("tags-ingresar");
-  wireTagGrid("tags-modal");
+  [...GRIDS_INGRESAR, ...GRIDS_MODAL].forEach(wireTagGrid);
 
-  function tagsSeleccionados(gridId) {
-    return Array.from(document.querySelectorAll(`#${gridId} input[type="checkbox"]:checked`)).map((cb) => cb.value);
+  // Junta las casillas marcadas de varias grillas (una sola sección de un formulario)
+  function tagsSeleccionados(gridIds) {
+    return gridIds.flatMap((id) =>
+      Array.from(document.querySelectorAll(`#${id} input[type="checkbox"]:checked`)).map((cb) => cb.value)
+    );
   }
 
-  function marcarTags(gridId, tags) {
-    document.querySelectorAll(`#${gridId} input[type="checkbox"]`).forEach((cb) => {
-      const marcado = tags.includes(cb.value);
-      cb.checked = marcado;
-      cb.closest(".tag-check").classList.toggle("checked", marcado);
+  function marcarTags(gridIds, tags) {
+    gridIds.forEach((id) => {
+      document.querySelectorAll(`#${id} input[type="checkbox"]`).forEach((cb) => {
+        const marcado = tags.includes(cb.value);
+        cb.checked = marcado;
+        cb.closest(".tag-check").classList.toggle("checked", marcado);
+      });
     });
+  }
+
+  function limpiarTags(gridIds) {
+    marcarTags(gridIds, []);
   }
 
   // Arma el texto final que se guarda en la planilla: "TAG1, TAG2 - texto libre"
@@ -421,7 +482,7 @@
     return partes.join(" - ");
   }
 
-  // Detecta qué tags conocidos aparecen dentro de un texto de observación existente (para editar)
+  // Detecta qué tags (sin contar N/C, que se maneja aparte) aparecen en un texto existente
   function detectarTags(texto) {
     const o = (texto || "").toUpperCase();
     const encontrados = [];
@@ -431,10 +492,24 @@
     if (o.includes("VIEL")) encontrados.push("VIEL");
     if (/SAN IGNACIO|SN IGNACIO/.test(o)) encontrados.push("SAN IGNACIO");
     if (o.includes("SAN FRANCISCO")) encontrados.push("SAN FRANCISCO");
+    if (o.includes("TRANSPORTE")) encontrados.push("TRANSPORTE");
     if (/RETIRO|RETIRA/.test(o)) encontrados.push("RETIRO");
-    if (/\bN\/?C\b/.test(o) || o.includes("REFACT")) encontrados.push("N/C");
     if (o.includes("CORTE")) encontrados.push("CORTE");
     return encontrados;
+  }
+
+  // Detecta si el texto trae Nota de Crédito (Total o Parcial) y trata de rescatar el motivo ya guardado
+  function detectarNC(texto) {
+    const o = (texto || "").toUpperCase();
+    let valor = "";
+    if (/\bN\/?C\s*P\b/.test(o)) valor = "N/C P";
+    else if (/\bN\/?C\b/.test(o) || o.includes("REFACT")) valor = "N/C";
+
+    let motivo = "";
+    const match = (texto || "").match(/Motivo NC:\s*(.+)$/i);
+    if (match) motivo = match[1].trim();
+
+    return { valor, motivo };
   }
 
   // ----- Navegación entre tabs -----
@@ -483,7 +558,7 @@
       fecha: document.getElementById("fecha").value,
       hora: horaActual,
       observacion: construirObservacion(
-        tagsSeleccionados("tags-ingresar"),
+        tagsSeleccionados(GRIDS_INGRESAR),
         document.getElementById("observacion").value
       ),
     };
@@ -522,7 +597,7 @@
         }
 
         formIngresar.reset();
-        document.querySelectorAll("#tags-ingresar .tag-check").forEach((l) => l.classList.remove("checked"));
+        limpiarTags(GRIDS_INGRESAR);
         document.getElementById("fecha").value = new Date().toISOString().slice(0, 10);
       }
     } catch (err) {
@@ -696,6 +771,7 @@
         ["sanignacio", "San Ignacio"],
         ["sanfrancisco", "San Francisco"],
         ["retiro", "Retiro"],
+        ["transporte", "Transporte"],
         ["valparaiso", "Valparaíso"],
         ["guia", "Guía"],
         ["nc", "Nota de Crédito"],
@@ -784,18 +860,64 @@
     return { tags: tagsDetectados, libre };
   }
 
+  // ----- Mostrar/ocultar el bloque de motivo según el select de NC -----
+  const selectNC = document.getElementById("modal-nc");
+  const wrapMotivo = document.getElementById("modal-nc-motivo-wrap");
+  const selectMotivo = document.getElementById("modal-nc-motivo");
+  const wrapMotivoOtro = document.getElementById("modal-nc-motivo-otro-wrap");
+  const inputMotivoOtro = document.getElementById("modal-nc-motivo-otro");
+  const seccionNC = document.getElementById("seccion-nc");
+
+  selectNC.addEventListener("change", () => {
+    const activo = selectNC.value !== "";
+    wrapMotivo.style.display = activo ? "block" : "none";
+    seccionNC.classList.toggle("activa", activo);
+    if (!activo) {
+      selectMotivo.value = "";
+      wrapMotivoOtro.style.display = "none";
+      inputMotivoOtro.value = "";
+    }
+  });
+  selectMotivo.addEventListener("change", () => {
+    wrapMotivoOtro.style.display = selectMotivo.value === "Otro" ? "block" : "none";
+  });
+
   function abrirModalEditar(numero) {
     const registro = registrosCache.find((r) => String(r.numero) === String(numero));
     if (!registro) return;
     numeroEnEdicion = numero;
 
     const { tags, libre } = parseObservacionParaEditar(registro.observacion);
+    const { valor: ncValor, motivo: ncMotivo } = detectarNC(registro.observacion);
 
     document.getElementById("modal-numero").textContent = registro.numero;
     document.getElementById("modal-fecha").value = registro.fechaISO || "";
     document.getElementById("modal-hora").value = registro.hora || "";
-    marcarTags("tags-modal", tags);
-    document.getElementById("modal-observacion").value = libre;
+    marcarTags(GRIDS_MODAL, tags);
+
+    // Quitar del texto libre el fragmento "Motivo NC: ..." si quedó ahí, para no duplicarlo
+    document.getElementById("modal-observacion").value = libre.replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim();
+
+    selectNC.value = ncValor;
+    const activo = ncValor !== "";
+    wrapMotivo.style.display = activo ? "block" : "none";
+    seccionNC.classList.toggle("activa", activo);
+    if (activo && ncMotivo) {
+      const opciones = Array.from(selectMotivo.options).map((o) => o.value);
+      if (opciones.includes(ncMotivo)) {
+        selectMotivo.value = ncMotivo;
+        wrapMotivoOtro.style.display = "none";
+      } else {
+        selectMotivo.value = "Otro";
+        wrapMotivoOtro.style.display = "block";
+        inputMotivoOtro.value = ncMotivo;
+      }
+    } else {
+      selectMotivo.value = "";
+      wrapMotivoOtro.style.display = "none";
+      inputMotivoOtro.value = "";
+    }
+
     modalMsg.className = "msg";
     modalMsg.textContent = "";
     modalOverlay.classList.add("active");
@@ -815,15 +937,39 @@
     e.preventDefault();
     modalMsg.className = "msg";
     modalMsg.textContent = "";
+
+    // Si se marcó Nota de Crédito, el motivo es obligatorio
+    const ncValor = selectNC.value;
+    let motivoFinal = "";
+    if (ncValor) {
+      if (!selectMotivo.value) {
+        modalMsg.className = "msg err";
+        modalMsg.textContent = "Selecciona el motivo de la Nota de Crédito";
+        return;
+      }
+      if (selectMotivo.value === "Otro" && !inputMotivoOtro.value.trim()) {
+        modalMsg.className = "msg err";
+        modalMsg.textContent = "Especifica el motivo de la Nota de Crédito";
+        return;
+      }
+      motivoFinal = selectMotivo.value === "Otro" ? inputMotivoOtro.value.trim() : selectMotivo.value;
+    }
+
     modalGuardar.disabled = true;
     modalGuardar.textContent = "Guardando...";
 
     const fechaVal = document.getElementById("modal-fecha").value;
     const horaVal = document.getElementById("modal-hora").value;
-    const obsVal = construirObservacion(
-      tagsSeleccionados("tags-modal"),
-      document.getElementById("modal-observacion").value
-    );
+
+    const tagsFinal = tagsSeleccionados(GRIDS_MODAL);
+    if (ncValor) tagsFinal.push(ncValor);
+
+    let libreFinal = document.getElementById("modal-observacion").value.trim();
+    if (ncValor && motivoFinal) {
+      libreFinal = (libreFinal ? libreFinal + " | " : "") + "Motivo NC: " + motivoFinal;
+    }
+
+    const obsVal = construirObservacion(tagsFinal, libreFinal);
 
     try {
       const res = await fetch(API_URL, {
