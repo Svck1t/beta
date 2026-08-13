@@ -33,7 +33,7 @@
     border-bottom: 1px solid var(--navy-border);
   }
   .header-inner {
-    max-width: 900px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 16px 20px;
     display: flex;
@@ -58,7 +58,7 @@
   }
   nav button.active { background: var(--blue); color: #fff; }
 
-  main { max-width: 900px; margin: 32px auto; padding: 0 16px; }
+  main { max-width: 1100px; margin: 32px auto; padding: 0 16px; }
   .tab { display: none; }
   .tab.active { display: block; }
 
@@ -123,6 +123,26 @@
   .factura-detalle div { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--panel-border); font-size: 14px; }
   .factura-detalle div:last-child { border-bottom: none; }
   .factura-detalle span.label { color: var(--ink-dim); }
+
+  .ingresar-layout { display: flex; gap: 20px; align-items: flex-start; }
+  .ingresar-form-col { flex: 1; min-width: 0; }
+  .ingresar-recientes-col { width: 280px; flex-shrink: 0; }
+  @media (max-width: 820px) {
+    .ingresar-layout { flex-direction: column; }
+    .ingresar-recientes-col { width: 100%; }
+  }
+  .recientes-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    padding: 10px 2px;
+    border-bottom: 1px solid var(--panel-border);
+    font-size: 13px;
+  }
+  .recientes-row:last-child { border-bottom: none; }
+  .recientes-row .num { font-weight: 700; }
+  .recientes-row .cuando { color: var(--ink-dim); font-size: 12px; white-space: nowrap; text-align: right; }
 
   .listado-row {
     display: flex;
@@ -289,40 +309,53 @@
   <section id="tab-ingresar" class="tab active">
     <h1>Ingresar factura</h1>
     <p class="sub">Día, mes y año se calculan solos a partir de la fecha.</p>
-    <form id="form-ingresar" class="card">
-      <label for="numero">N° Factura</label>
-      <input id="numero" type="text" inputmode="numeric" required placeholder="Ej: 548025" />
 
-      <label for="fecha">Fecha</label>
-      <input id="fecha" type="date" required />
+    <div class="ingresar-layout">
+      <div class="ingresar-form-col">
+        <form id="form-ingresar" class="card">
+          <label for="numero">N° Factura</label>
+          <input id="numero" type="text" inputmode="numeric" required placeholder="Ej: 548025" />
 
-      <label style="margin-top:12px;">Bodega <span style="font-weight:400; color:var(--ink-dim);">(vacío = Aldunate, la principal)</span></label>
-      <div class="tags-grid" id="tags-ingresar-bodega">
-        <label class="tag-check"><input type="checkbox" value="VIEL" /> Viel</label>
-        <label class="tag-check"><input type="checkbox" value="SAN IGNACIO" /> San Ignacio</label>
-        <label class="tag-check"><input type="checkbox" value="SAN FRANCISCO" /> San Francisco</label>
+          <label for="fecha">Fecha</label>
+          <input id="fecha" type="date" required />
+
+          <label style="margin-top:12px;">Bodega <span style="font-weight:400; color:var(--ink-dim);">(vacío = Aldunate, la principal)</span></label>
+          <div class="tags-grid" id="tags-ingresar-bodega">
+            <label class="tag-check"><input type="checkbox" value="VIEL" /> Viel</label>
+            <label class="tag-check"><input type="checkbox" value="SAN IGNACIO" /> San Ignacio</label>
+            <label class="tag-check"><input type="checkbox" value="SAN FRANCISCO" /> San Francisco</label>
+          </div>
+
+          <label style="margin-top:12px;">Proceso</label>
+          <div class="tags-grid" id="tags-ingresar-proceso">
+            <label class="tag-check"><input type="checkbox" value="CORTE" /> Corte</label>
+            <label class="tag-check"><input type="checkbox" value="RETIRO" /> Retiro</label>
+            <label class="tag-check"><input type="checkbox" value="TRANSPORTE" /> Transporte</label>
+            <label class="tag-check"><input type="checkbox" value="VALPARAISO" /> Valparaíso</label>
+          </div>
+
+          <label style="margin-top:12px;">Documento relacionado</label>
+          <div class="tags-grid" id="tags-ingresar-doc">
+            <label class="tag-check"><input type="checkbox" value="GUIA" /> Guía</label>
+            <label class="tag-check"><input type="checkbox" value="BOLETA" /> Boleta</label>
+          </div>
+
+          <label for="observacion">Observación específica (opcional)</label>
+          <input id="observacion" type="text" placeholder="Ej: cliente pide vehículo con rampla..." />
+
+          <button id="btn-ingresar" class="primary" type="submit">Registrar factura</button>
+          <div id="msg-ingresar" class="msg"></div>
+        </form>
       </div>
 
-      <label style="margin-top:12px;">Proceso</label>
-      <div class="tags-grid" id="tags-ingresar-proceso">
-        <label class="tag-check"><input type="checkbox" value="CORTE" /> Corte</label>
-        <label class="tag-check"><input type="checkbox" value="RETIRO" /> Retiro</label>
-        <label class="tag-check"><input type="checkbox" value="TRANSPORTE" /> Transporte</label>
-        <label class="tag-check"><input type="checkbox" value="VALPARAISO" /> Valparaíso</label>
+      <div class="ingresar-recientes-col">
+        <div class="card">
+          <h2 style="font-size:14px; margin:0 0 4px;">Últimos movimientos</h2>
+          <p class="sub" style="margin-bottom:8px; font-size:12px;">Se actualiza solo cada 45s.</p>
+          <div id="recientes-content" class="loading" style="font-size:13px;">Cargando...</div>
+        </div>
       </div>
-
-      <label style="margin-top:12px;">Documento relacionado</label>
-      <div class="tags-grid" id="tags-ingresar-doc">
-        <label class="tag-check"><input type="checkbox" value="GUIA" /> Guía</label>
-        <label class="tag-check"><input type="checkbox" value="BOLETA" /> Boleta</label>
-      </div>
-
-      <label for="observacion">Observación específica (opcional)</label>
-      <input id="observacion" type="text" placeholder="Ej: cliente pide vehículo con rampla..." />
-
-      <button id="btn-ingresar" class="primary" type="submit">Registrar factura</button>
-      <div id="msg-ingresar" class="msg"></div>
-    </form>
+    </div>
   </section>
 
   <!-- BUSCAR + LISTADO -->
@@ -603,6 +636,7 @@
         if (registrosCache) {
           registrosCache.unshift(nuevoRegistro);
           renderListado(filtrar(registrosCache));
+          renderRecientes(registrosCache);
         }
 
         formIngresar.reset();
@@ -691,6 +725,7 @@
     const el = document.getElementById("listado-content");
     if (registrosCache && !forzar) {
       renderListado(filtrar(registrosCache));
+      renderRecientes(registrosCache);
       return;
     }
     if (!registrosCache) el.innerHTML = '<p class="loading" style="padding:16px;">Cargando...</p>';
@@ -706,10 +741,34 @@
 
       registrosCache = data.registros;
       renderListado(filtrar(registrosCache));
+      renderRecientes(registrosCache);
     } catch (err) {
       el.innerHTML = `<div class="msg err" style="margin:16px;">Error de conexión: ${err.message}</div>`;
     }
   }
+
+  // ----- Panel "Últimos movimientos" (pestaña Ingresar) -----
+  function renderRecientes(registros) {
+    const el = document.getElementById("recientes-content");
+    if (!el) return;
+    const ultimos = registros.slice(0, 8);
+    if (ultimos.length === 0) {
+      el.innerHTML = '<p class="loading">Sin registros aún.</p>';
+      return;
+    }
+    el.innerHTML = ultimos
+      .map(
+        (r) => `
+      <div class="recientes-row">
+        <span class="num">N° ${r.numero}</span>
+        <span class="cuando">${r.hora || "-"}<br>${r.fecha}</span>
+      </div>`
+      )
+      .join("");
+  }
+
+  // Carga inicial (la pestaña "Ingresar" es la que se ve primero al abrir la web)
+  cargarListado();
 
   function filtrar(registros) {
     const t = filtroTexto.value.trim().toLowerCase();
@@ -1045,6 +1104,7 @@
 
       registrosCache = registrosCache.filter((r) => String(r.numero) !== String(numero));
       renderListado(filtrar(registrosCache));
+      renderRecientes(registrosCache);
     } catch (err) {
       alert("Error de conexión: " + err.message);
     }
@@ -1058,7 +1118,7 @@
   setInterval(() => {
     if (document.visibilityState !== "visible") return;
     const activo = document.querySelector(".tab-btn.active")?.dataset.tab;
-    if (activo === "buscar") cargarListado(true);
+    if (activo === "buscar" || activo === "ingresar") cargarListado(true);
     if (activo === "dashboard") cargarDashboard(true);
   }, 45000);
 </script>
