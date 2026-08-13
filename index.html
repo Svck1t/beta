@@ -194,6 +194,26 @@
 
   .loading { color: var(--ink-dim); font-size: 14px; }
 
+  .tags-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .tag-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .tag-check input { width: auto; margin: 0; }
+  .tag-check.checked { background: var(--blue-light); border-color: var(--blue); color: var(--blue); font-weight: 600; }
+
   .acciones-cell { white-space: nowrap; }
   .btn-mini {
     border: 1px solid var(--panel-border);
@@ -264,8 +284,21 @@
       <label for="fecha">Fecha</label>
       <input id="fecha" type="date" required />
 
-      <label for="observacion">Observación</label>
-      <input id="observacion" type="text" placeholder="CORTE, RETIRO, N/C, GUIA..." />
+      <label>Tipo (marca las que correspondan)</label>
+      <div class="tags-grid" id="tags-ingresar">
+        <label class="tag-check"><input type="checkbox" value="CORTE" /> Corte</label>
+        <label class="tag-check"><input type="checkbox" value="VIEL" /> Viel</label>
+        <label class="tag-check"><input type="checkbox" value="SAN IGNACIO" /> San Ignacio</label>
+        <label class="tag-check"><input type="checkbox" value="SAN FRANCISCO" /> San Francisco</label>
+        <label class="tag-check"><input type="checkbox" value="RETIRO" /> Retiro</label>
+        <label class="tag-check"><input type="checkbox" value="VALPARAISO" /> Valparaíso</label>
+        <label class="tag-check"><input type="checkbox" value="GUIA" /> Guía</label>
+        <label class="tag-check"><input type="checkbox" value="N/C" /> Nota de Crédito</label>
+        <label class="tag-check"><input type="checkbox" value="BOLETA" /> Boleta</label>
+      </div>
+
+      <label for="observacion">Observación específica (opcional)</label>
+      <input id="observacion" type="text" placeholder="Ej: cliente pide vehículo con rampla..." />
 
       <button id="btn-ingresar" class="primary" type="submit">Registrar factura</button>
       <div id="msg-ingresar" class="msg"></div>
@@ -312,7 +345,7 @@
 
 <!-- MODAL EDITAR -->
 <div id="modal-overlay" class="modal-overlay">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:460px;">
     <h2>Editar factura</h2>
     <p class="sub">N° <span id="modal-numero"></span></p>
     <form id="form-editar">
@@ -322,7 +355,20 @@
       <label for="modal-hora">Hora</label>
       <input id="modal-hora" type="time" />
 
-      <label for="modal-observacion">Observación</label>
+      <label>Tipo (marca las que correspondan)</label>
+      <div class="tags-grid" id="tags-modal">
+        <label class="tag-check"><input type="checkbox" value="CORTE" /> Corte</label>
+        <label class="tag-check"><input type="checkbox" value="VIEL" /> Viel</label>
+        <label class="tag-check"><input type="checkbox" value="SAN IGNACIO" /> San Ignacio</label>
+        <label class="tag-check"><input type="checkbox" value="SAN FRANCISCO" /> San Francisco</label>
+        <label class="tag-check"><input type="checkbox" value="RETIRO" /> Retiro</label>
+        <label class="tag-check"><input type="checkbox" value="VALPARAISO" /> Valparaíso</label>
+        <label class="tag-check"><input type="checkbox" value="GUIA" /> Guía</label>
+        <label class="tag-check"><input type="checkbox" value="N/C" /> Nota de Crédito</label>
+        <label class="tag-check"><input type="checkbox" value="BOLETA" /> Boleta</label>
+      </div>
+
+      <label for="modal-observacion">Observación específica (opcional)</label>
       <input id="modal-observacion" type="text" />
 
       <div id="modal-msg" class="msg"></div>
@@ -341,6 +387,55 @@
   const DIAS = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
   const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   let registrosCache = null; // se llena la primera vez que se abre "Buscar"
+
+  // ----- Tags (Corte, Bodega, Valparaíso, Guía, N/C, Boleta) -----
+  const TAGS_CONOCIDOS = ["CORTE", "VIEL", "SAN IGNACIO", "SAN FRANCISCO", "RETIRO", "VALPARAISO", "GUIA", "N/C", "BOLETA"];
+
+  function wireTagGrid(gridId) {
+    document.querySelectorAll(`#${gridId} input[type="checkbox"]`).forEach((cb) => {
+      cb.addEventListener("change", () => {
+        cb.closest(".tag-check").classList.toggle("checked", cb.checked);
+      });
+    });
+  }
+  wireTagGrid("tags-ingresar");
+  wireTagGrid("tags-modal");
+
+  function tagsSeleccionados(gridId) {
+    return Array.from(document.querySelectorAll(`#${gridId} input[type="checkbox"]:checked`)).map((cb) => cb.value);
+  }
+
+  function marcarTags(gridId, tags) {
+    document.querySelectorAll(`#${gridId} input[type="checkbox"]`).forEach((cb) => {
+      const marcado = tags.includes(cb.value);
+      cb.checked = marcado;
+      cb.closest(".tag-check").classList.toggle("checked", marcado);
+    });
+  }
+
+  // Arma el texto final que se guarda en la planilla: "TAG1, TAG2 - texto libre"
+  function construirObservacion(tags, textoLibre) {
+    const partes = [];
+    if (tags.length) partes.push(tags.join(", "));
+    if (textoLibre.trim()) partes.push(textoLibre.trim());
+    return partes.join(" - ");
+  }
+
+  // Detecta qué tags conocidos aparecen dentro de un texto de observación existente (para editar)
+  function detectarTags(texto) {
+    const o = (texto || "").toUpperCase();
+    const encontrados = [];
+    if (/VALPARAISO|VALAPARAISO|VALPO/.test(o)) encontrados.push("VALPARAISO");
+    if (/GUIA|GUÍA/.test(o)) encontrados.push("GUIA");
+    if (o.includes("BOLETA")) encontrados.push("BOLETA");
+    if (o.includes("VIEL")) encontrados.push("VIEL");
+    if (/SAN IGNACIO|SN IGNACIO/.test(o)) encontrados.push("SAN IGNACIO");
+    if (o.includes("SAN FRANCISCO")) encontrados.push("SAN FRANCISCO");
+    if (/RETIRO|RETIRA/.test(o)) encontrados.push("RETIRO");
+    if (/\bN\/?C\b/.test(o) || o.includes("REFACT")) encontrados.push("N/C");
+    if (o.includes("CORTE")) encontrados.push("CORTE");
+    return encontrados;
+  }
 
   // ----- Navegación entre tabs -----
   const tabBtns = document.querySelectorAll(".tab-btn");
@@ -387,7 +482,10 @@
       numero: document.getElementById("numero").value.trim(),
       fecha: document.getElementById("fecha").value,
       hora: horaActual,
-      observacion: document.getElementById("observacion").value.trim(),
+      observacion: construirObservacion(
+        tagsSeleccionados("tags-ingresar"),
+        document.getElementById("observacion").value
+      ),
     };
 
     try {
@@ -424,6 +522,7 @@
         }
 
         formIngresar.reset();
+        document.querySelectorAll("#tags-ingresar .tag-check").forEach((l) => l.classList.remove("checked"));
         document.getElementById("fecha").value = new Date().toISOString().slice(0, 10);
       }
     } catch (err) {
@@ -593,7 +692,10 @@
       const etiquetasTipo = [
         ["normal", "Normal"],
         ["corte", "Corte"],
-        ["bodega", "Bodega (Viel/San Ignacio/San Francisco/Retiro)"],
+        ["viel", "Viel"],
+        ["sanignacio", "San Ignacio"],
+        ["sanfrancisco", "San Francisco"],
+        ["retiro", "Retiro"],
         ["valparaiso", "Valparaíso"],
         ["guia", "Guía"],
         ["nc", "Nota de Crédito"],
@@ -636,7 +738,8 @@
 
         <div class="tabla-wrap" style="margin-bottom:20px;">
           <div style="padding:16px 16px 0;">
-            <h2 style="font-size:15px; margin:0 0 12px;">Facturas por tipo (histórico)</h2>
+            <h2 style="font-size:15px; margin:0 0 2px;">Facturas por tipo (histórico)</h2>
+            <p class="sub" style="margin-bottom:12px;">Una factura puede tener varios tipos a la vez, por eso la suma puede ser mayor al total de facturas.</p>
           </div>
           <table class="listado">
             <thead><tr><th>Tipo</th><th>Cantidad</th></tr></thead>
@@ -665,15 +768,34 @@
   const modalGuardar = document.getElementById("modal-guardar");
   let numeroEnEdicion = null;
 
+  // Separa una observación existente en tags detectados + texto libre restante
+  function parseObservacionParaEditar(obsTexto) {
+    const texto = (obsTexto || "").trim();
+    const tagsDetectados = detectarTags(texto);
+
+    // Si sigue nuestro propio formato "TAG1, TAG2 - resto", separamos limpio
+    const match = texto.match(/^([^-]+?)\s-\s(.*)$/);
+    let libre = texto;
+    if (match) {
+      const candidatos = match[1].split(",").map((s) => s.trim().toUpperCase());
+      const todasConocidas = candidatos.length > 0 && candidatos.every((c) => TAGS_CONOCIDOS.includes(c));
+      if (todasConocidas) libre = match[2].trim();
+    }
+    return { tags: tagsDetectados, libre };
+  }
+
   function abrirModalEditar(numero) {
     const registro = registrosCache.find((r) => String(r.numero) === String(numero));
     if (!registro) return;
     numeroEnEdicion = numero;
 
+    const { tags, libre } = parseObservacionParaEditar(registro.observacion);
+
     document.getElementById("modal-numero").textContent = registro.numero;
     document.getElementById("modal-fecha").value = registro.fechaISO || "";
     document.getElementById("modal-hora").value = registro.hora || "";
-    document.getElementById("modal-observacion").value = registro.observacion || "";
+    marcarTags("tags-modal", tags);
+    document.getElementById("modal-observacion").value = libre;
     modalMsg.className = "msg";
     modalMsg.textContent = "";
     modalOverlay.classList.add("active");
@@ -698,7 +820,10 @@
 
     const fechaVal = document.getElementById("modal-fecha").value;
     const horaVal = document.getElementById("modal-hora").value;
-    const obsVal = document.getElementById("modal-observacion").value.trim();
+    const obsVal = construirObservacion(
+      tagsSeleccionados("tags-modal"),
+      document.getElementById("modal-observacion").value
+    );
 
     try {
       const res = await fetch(API_URL, {
