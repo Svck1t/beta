@@ -777,8 +777,6 @@
             <th>Documento</th>
             <th>N/C</th>
             <th>Específica</th>
-            <th>Mes</th>
-            <th>Año</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -803,8 +801,6 @@
               <td style="vertical-align:top;">${celdaApilada(d.documento, "badge-documento")}</td>
               <td style="vertical-align:top;">${d.nc ? `<span class="badge badge-nc">${d.nc}</span>` : "-"}</td>
               <td class="obs" style="vertical-align:top;">${d.especifica || "-"}</td>
-              <td style="vertical-align:top;">${r.mes || "-"}</td>
-              <td style="vertical-align:top;">${r.anio || "-"}</td>
               <td class="acciones-cell" style="vertical-align:top;">
                 <button class="btn-mini btn-editar" data-numero="${r.numero}">Editar</button>
                 <button class="btn-mini eliminar btn-eliminar" data-numero="${r.numero}">Eliminar</button>
