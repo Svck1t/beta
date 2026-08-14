@@ -208,6 +208,12 @@
   table.listado tbody tr:last-child td { border-bottom: none; }
   table.listado tbody tr:hover { background: var(--bg); }
   table.listado td.num { font-weight: 700; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; white-space: nowrap; }
+  .badge-bodega { background: #ede9fe; color: #5b21b6; }
+  .badge-proceso { background: #fde8d8; color: #9a3b12; }
+  .badge-documento { background: #dbe4fc; color: #1d4ed8; }
+  .badge-nc { background: #fee2e2; color: #b91c1c; }
   table.listado td.obs { white-space: normal; color: var(--ink-dim); max-width: 220px; }
   table.listado .resultados-count { padding: 12px 14px; font-size: 13px; color: var(--ink-dim); }
 
@@ -799,7 +805,11 @@
             <th>Fecha</th>
             <th>Día</th>
             <th>Hora</th>
-            <th>Observación</th>
+            <th>Bodega</th>
+            <th>Proceso</th>
+            <th>Documento</th>
+            <th>N/C</th>
+            <th>Específica</th>
             <th>Mes</th>
             <th>Año</th>
             <th>Acciones</th>
@@ -807,22 +817,27 @@
         </thead>
         <tbody>
           ${registros
-            .map(
-              (r) => `
+            .map((r) => {
+              const d = desglosarObservacion(r.observacion);
+              return `
             <tr>
-              <td class="num">${r.numero}</td>
-              <td>${r.fecha}</td>
-              <td>${r.dia || "-"}</td>
-              <td>${r.hora || "-"}</td>
-              <td class="obs">${r.observacion || "-"}</td>
-              <td>${r.mes || "-"}</td>
-              <td>${r.anio || "-"}</td>
-              <td class="acciones-cell">
+              <td class="num" style="vertical-align:top;">${r.numero}</td>
+              <td style="vertical-align:top;">${r.fecha}</td>
+              <td style="vertical-align:top;">${r.dia || "-"}</td>
+              <td style="vertical-align:top;">${r.hora || "-"}</td>
+              <td style="vertical-align:top;">${celdaApilada(d.bodega, "badge-bodega")}</td>
+              <td style="vertical-align:top;">${celdaApilada(d.proceso, "badge-proceso")}</td>
+              <td style="vertical-align:top;">${celdaApilada(d.documento, "badge-documento")}</td>
+              <td style="vertical-align:top;">${d.nc ? `<span class="badge badge-nc">${d.nc}</span>` : "-"}</td>
+              <td class="obs" style="vertical-align:top;">${d.especifica || "-"}</td>
+              <td style="vertical-align:top;">${r.mes || "-"}</td>
+              <td style="vertical-align:top;">${r.anio || "-"}</td>
+              <td class="acciones-cell" style="vertical-align:top;">
                 <button class="btn-mini btn-editar" data-numero="${r.numero}">Editar</button>
                 <button class="btn-mini eliminar btn-eliminar" data-numero="${r.numero}">Eliminar</button>
               </td>
-            </tr>`
-            )
+            </tr>`;
+            })
             .join("")}
         </tbody>
       </table>
@@ -1095,8 +1110,44 @@
       const candidatos = match[1].split(",").map((s) => s.trim().toUpperCase());
       const todasConocidas = candidatos.length > 0 && candidatos.every((c) => TAGS_CONOCIDOS.includes(c));
       if (todasConocidas) libre = match[2].trim();
+    } else {
+      // No hay " - ": si el texto completo son solo tags conocidos (sin texto libre), no hay nada que mostrar aparte
+      const candidatos = texto.split(",").map((s) => s.trim().toUpperCase());
+      const todasConocidas = candidatos.length > 0 && candidatos.every((c) => TAGS_CONOCIDOS.includes(c));
+      if (todasConocidas) libre = "";
     }
     return { tags: tagsDetectados, libre };
+  }
+
+  // Separa una observación en columnas: bodega / proceso / documento / N-C / específica
+  const ETIQUETA_BONITA = {
+    CORTE: "Corte", VIEL: "Viel", "SAN IGNACIO": "San Ignacio", "SAN FRANCISCO": "San Francisco",
+    RETIRO: "Retiro", TRANSPORTE: "Transporte", VALPARAISO: "Valparaíso", GUIA: "Guía", BOLETA: "Boleta",
+  };
+  const COL_BODEGA = ["VIEL", "SAN IGNACIO", "SAN FRANCISCO"];
+  const COL_PROCESO = ["CORTE", "RETIRO", "TRANSPORTE", "VALPARAISO"];
+  const COL_DOCUMENTO = ["GUIA", "BOLETA"];
+
+  function desglosarObservacion(obsTexto) {
+    const tags = detectarTags(obsTexto);
+    const { valor: ncValor } = detectarNC(obsTexto);
+    const { libre } = parseObservacionParaEditar(obsTexto);
+    const especifica = libre.replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim();
+
+    return {
+      bodega: tags.filter((t) => COL_BODEGA.includes(t)).map((t) => ETIQUETA_BONITA[t]),
+      proceso: tags.filter((t) => COL_PROCESO.includes(t)).map((t) => ETIQUETA_BONITA[t]),
+      documento: tags.filter((t) => COL_DOCUMENTO.includes(t)).map((t) => ETIQUETA_BONITA[t]),
+      nc: ncValor === "N/C" ? "N/C Total" : ncValor === "N/C P" ? "N/C Parcial" : "",
+      especifica,
+    };
+  }
+
+  function celdaApilada(items, claseBadge) {
+    if (!items || items.length === 0) return "-";
+    return items
+      .map((v) => `<div style="margin-bottom:3px;"><span class="badge ${claseBadge}">${v}</span></div>`)
+      .join("");
   }
 
   // ----- Mostrar/ocultar el bloque de motivo según el select de NC -----
