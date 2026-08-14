@@ -835,16 +835,20 @@
           </tr>
         </thead>
         <tbody>
-          ${registros
-            .map((r) => {
-              const d = {
-                bodega: String(r.bodega || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
-                proceso: String(r.proceso || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
-                documento: String(r.documento || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
-                nc: r.nc === "N/C" ? "N/C Total" : r.nc === "N/C P" ? "N/C Parcial" : "",
-                especifica: String(r.observacion || "").replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim(),
-              };
-              return `
+          ${(() => {
+            const BODEGA_VALIDAS = ["VIEL", "SAN IGNACIO", "SAN FRANCISCO"];
+            const PROCESO_VALIDAS = ["CORTE", "RETIRO", "TRANSPORTE", "VALPARAISO"];
+            const DOCUMENTO_VALIDAS = ["GUIA", "BOLETA"];
+            return registros
+              .map((r) => {
+                const d = {
+                  bodega: String(r.bodega || "").split(",").map((s) => s.trim().toUpperCase()).filter((t) => BODEGA_VALIDAS.includes(t)).map((t) => ETIQUETA_BONITA[t] || t),
+                  proceso: String(r.proceso || "").split(",").map((s) => s.trim().toUpperCase()).filter((t) => PROCESO_VALIDAS.includes(t)).map((t) => ETIQUETA_BONITA[t] || t),
+                  documento: String(r.documento || "").split(",").map((s) => s.trim().toUpperCase()).filter((t) => DOCUMENTO_VALIDAS.includes(t)).map((t) => ETIQUETA_BONITA[t] || t),
+                  nc: r.nc === "N/C" ? "N/C Total" : r.nc === "N/C P" ? "N/C Parcial" : "",
+                  especifica: String(r.observacion || "").replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim(),
+                };
+                return `
             <tr>
               <td class="num" style="vertical-align:top;">${r.numero}${r.prioritario ? '<span class="asterisco-prioritario" title="Prioritario">*</span>' : ""}</td>
               <td style="vertical-align:top;">${r.fecha}</td>
@@ -860,8 +864,9 @@
                 <button class="btn-mini eliminar btn-eliminar" data-numero="${r.numero}">Eliminar</button>
               </td>
             </tr>`;
-            })
-            .join("")}
+              })
+              .join("");
+          })()}
         </tbody>
       </table>
       <div class="resultados-count">${registros.length} factura${registros.length === 1 ? "" : "s"}</div>
