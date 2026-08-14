@@ -786,9 +786,9 @@
           ${registros
             .map((r) => {
               const d = {
-                bodega: (r.bodega || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
-                proceso: (r.proceso || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
-                documento: (r.documento || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
+                bodega: String(r.bodega || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
+                proceso: String(r.proceso || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
+                documento: String(r.documento || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
                 nc: r.nc === "N/C" ? "N/C Total" : r.nc === "N/C P" ? "N/C Parcial" : "",
                 especifica: (r.observacion || "").replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim(),
               };
@@ -937,10 +937,10 @@
         !t ||
         String(r.numero).toLowerCase().includes(t) ||
         (r.observacion || "").toLowerCase().includes(t) ||
-        (r.bodega || "").toLowerCase().includes(t) ||
-        (r.proceso || "").toLowerCase().includes(t) ||
-        (r.documento || "").toLowerCase().includes(t) ||
-        (r.nc || "").toLowerCase().includes(t);
+        String(r.bodega || "").toLowerCase().includes(t) ||
+        String(r.proceso || "").toLowerCase().includes(t) ||
+        String(r.documento || "").toLowerCase().includes(t) ||
+        String(r.nc || "").toLowerCase().includes(t);
       const coincideFecha = !f || r.fechaISO === f;
       return coincideTexto && coincideFecha;
     });
@@ -1116,9 +1116,9 @@
     numeroEnEdicion = numero;
 
     const tags = [
-      ...(registro.bodega || "").split(",").map((s) => s.trim()).filter(Boolean),
-      ...(registro.proceso || "").split(",").map((s) => s.trim()).filter(Boolean),
-      ...(registro.documento || "").split(",").map((s) => s.trim()).filter(Boolean),
+      ...String(registro.bodega || "").split(",").map((s) => s.trim()).filter(Boolean),
+      ...String(registro.proceso || "").split(",").map((s) => s.trim()).filter(Boolean),
+      ...String(registro.documento || "").split(",").map((s) => s.trim()).filter(Boolean),
     ];
     const ncValor = registro.nc || "";
     const ncMatch = (registro.observacion || "").match(/Motivo NC:\s*(.+)$/i);
