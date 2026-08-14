@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Control Facturas</title>
+<link rel="preconnect" href="https://script.google.com" />
+<link rel="preconnect" href="https://script.googleusercontent.com" />
 <style>
   :root {
     --bg: #eef1f4;
@@ -630,7 +632,26 @@
   const API_URL = "https://script.google.com/macros/s/AKfycbxchbWwNZnnx72MF5d_NZockO1XD56He_Ti-nIb3Hx7HLb_0u-gpqRTh0Vy3c23BrXl/exec";
   const DIAS = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
   const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-  let registrosCache = null; // se llena la primera vez que se abre "Buscar"
+  let registrosCache = null; // se llena la primera vez que se abre "Buscar" (completo, hasta 200 filas)
+  let recientesCache = null; // liviano (8 filas), para el panel de la pestaña "Ingresar"
+
+  // ----- Caché local (localStorage): muestra al instante lo último visto mientras se refresca en segundo plano -----
+  function guardarCacheLocal(clave, datos) {
+    try {
+      localStorage.setItem("cf_" + clave, JSON.stringify({ datos: datos, ts: Date.now() }));
+    } catch (e) {
+      /* si el navegador bloquea localStorage, simplemente no cacheamos */
+    }
+  }
+  function leerCacheLocal(clave) {
+    try {
+      const raw = localStorage.getItem("cf_" + clave);
+      if (!raw) return null;
+      return JSON.parse(raw).datos;
+    } catch (e) {
+      return null;
+    }
+  }
 
   // ----- Tags (Bodega / Proceso / Documento) -----
   const GRIDS_INGRESAR = ["tags-ingresar-bodega", "tags-ingresar-proceso", "tags-ingresar-doc"];
@@ -755,8 +776,12 @@
         if (registrosCache) {
           registrosCache.unshift(nuevoRegistro);
           renderListado(filtrar(registrosCache));
-          renderRecientes(registrosCache);
+          guardarCacheLocal("listado", registrosCache);
         }
+        if (recientesCache) recientesCache.unshift(nuevoRegistro);
+        else recientesCache = [nuevoRegistro];
+        renderRecientes(registrosCache || recientesCache);
+        guardarCacheLocal("recientes", (registrosCache || recientesCache).slice(0, 8));
 
         formIngresar.reset();
         limpiarTags(GRIDS_INGRESAR);
@@ -858,22 +883,33 @@
       renderRecientes(registrosCache);
       return;
     }
-    if (!registrosCache) el.innerHTML = '<p class="loading" style="padding:16px;">Cargando...</p>';
+
+    if (!registrosCache) {
+      const cacheLocal = leerCacheLocal("listado");
+      if (cacheLocal && cacheLocal.length) {
+        registrosCache = cacheLocal;
+        renderListado(filtrar(registrosCache));
+        renderRecientes(registrosCache);
+      } else {
+        el.innerHTML = '<p class="loading" style="padding:16px;">Cargando...</p>';
+      }
+    }
 
     try {
       const res = await fetch(`${API_URL}?action=listado`);
       const data = await res.json();
 
       if (!data.ok) {
-        el.innerHTML = `<div class="msg err" style="margin:16px;">${data.error}</div>`;
+        if (!registrosCache) el.innerHTML = `<div class="msg err" style="margin:16px;">${data.error}</div>`;
         return;
       }
 
       registrosCache = data.registros;
       renderListado(filtrar(registrosCache));
       renderRecientes(registrosCache);
+      guardarCacheLocal("listado", registrosCache);
     } catch (err) {
-      el.innerHTML = `<div class="msg err" style="margin:16px;">Error de conexión: ${err.message}</div>`;
+      if (!registrosCache) el.innerHTML = `<div class="msg err" style="margin:16px;">Error de conexión: ${err.message}</div>`;
     }
   }
 
@@ -897,8 +933,36 @@
       .join("");
   }
 
-  // Carga inicial (la pestaña "Ingresar" es la que se ve primero al abrir la web)
-  cargarListado();
+  // Carga inicial liviana (la pestaña "Ingresar" es la que se ve primero al abrir la web,
+  // así que no hace falta pedir las 200 filas completas, solo las 8 del panel lateral)
+  async function cargarRecientesLigero() {
+    if (registrosCache) {
+      renderRecientes(registrosCache);
+      return;
+    }
+
+    const cacheLocal = leerCacheLocal("recientes");
+    if (cacheLocal && cacheLocal.length) {
+      recientesCache = cacheLocal;
+      renderRecientes(recientesCache);
+    }
+
+    try {
+      const res = await fetch(`${API_URL}?action=listado&limite=8`);
+      const data = await res.json();
+      if (data.ok) {
+        recientesCache = data.registros;
+        renderRecientes(recientesCache);
+        guardarCacheLocal("recientes", recientesCache);
+      }
+    } catch (err) {
+      if (!recientesCache) {
+        const el = document.getElementById("recientes-content");
+        if (el) el.innerHTML = '<p class="loading">No se pudo cargar.</p>';
+      }
+    }
+  }
+  cargarRecientesLigero();
 
   // ----- Guía de Transporte (impresión) -----
   const CAMPOS_TRANSPORTE = [
@@ -988,109 +1052,124 @@
 
   // ----- Dashboard -----
   let dashboardCargado = false;
+
+  function renderDashboard(data) {
+    const el = document.getElementById("dashboard-content");
+    const filasMes = data.porMes
+      .map(
+        (m) => `
+      <tr>
+        <td>${m.mes}</td>
+        <td class="num">${m.total}</td>
+        <td>${m.normal}</td>
+        <td>${m.corte}</td>
+        <td>${m.bodega}</td>
+        <td>${m.valparaiso}</td>
+        <td>${m.guia}</td>
+        <td>${m.nc}</td>
+      </tr>`
+      )
+      .join("");
+
+    const t = data.totalAnio;
+    const pt = data.porTipo;
+    const etiquetasTipo = [
+      ["normal", "Normal"],
+      ["corte", "Corte"],
+      ["viel", "Viel"],
+      ["sanignacio", "San Ignacio"],
+      ["sanfrancisco", "San Francisco"],
+      ["retiro", "Retiro"],
+      ["transporte", "Transporte"],
+      ["valparaiso", "Valparaíso"],
+      ["guia", "Guía"],
+      ["nc", "Nota de Crédito"],
+      ["boleta", "Boleta"],
+      ["otros", "Otros"],
+    ];
+    const filasPorTipo = etiquetasTipo
+      .map(([key, label]) => `<tr><td>${label}</td><td class="num">${pt[key]}</td></tr>`)
+      .join("");
+
+    const filasUltimas = data.ultimas
+      .map(
+        (f) => `<tr><td class="num">${f.numero}</td><td>${f.fecha}</td><td>${f.hora || "-"}</td><td class="obs">${f.observacion || "-"}</td></tr>`
+      )
+      .join("");
+
+    el.innerHTML = `
+      <div class="kpis">
+        <div class="kpi"><div class="num">${data.total}</div><div class="label">Facturas totales</div></div>
+        <div class="kpi"><div class="num">${data.esteMes}</div><div class="label">Este mes</div></div>
+      </div>
+
+      <div class="tabla-wrap" style="margin-bottom:20px;">
+        <div style="padding:16px 16px 0;">
+          <h2 style="font-size:15px; margin:0 0 2px;">Resumen anual ${data.anio}</h2>
+          <p class="sub" style="margin-bottom:12px;">Detalle mes a mes por tipo de factura.</p>
+        </div>
+        <table class="listado">
+          <thead>
+            <tr><th>Mes</th><th>Total</th><th>Normal</th><th>Corte</th><th>Bodega</th><th>Valparaíso</th><th>Guía</th><th>N/C</th></tr>
+          </thead>
+          <tbody>
+            ${filasMes}
+            <tr style="background:var(--bg); font-weight:700;">
+              <td>TOTAL AÑO</td><td>${t.total}</td><td>${t.normal}</td><td>${t.corte}</td><td>${t.bodega}</td><td>${t.valparaiso}</td><td>${t.guia}</td><td>${t.nc}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tabla-wrap" style="margin-bottom:20px;">
+        <div style="padding:16px 16px 0;">
+          <h2 style="font-size:15px; margin:0 0 2px;">Facturas por tipo (histórico)</h2>
+          <p class="sub" style="margin-bottom:12px;">Una factura puede tener varios tipos a la vez, por eso la suma puede ser mayor al total de facturas.</p>
+        </div>
+        <table class="listado">
+          <thead><tr><th>Tipo</th><th>Cantidad</th></tr></thead>
+          <tbody>${filasPorTipo}</tbody>
+        </table>
+      </div>
+
+      <div class="tabla-wrap">
+        <div style="padding:16px 16px 0;">
+          <h2 style="font-size:15px; margin:0 0 12px;">Últimas registradas</h2>
+        </div>
+        <table class="listado">
+          <thead><tr><th>N°</th><th>Fecha</th><th>Hora</th><th>Observación</th></tr></thead>
+          <tbody>${filasUltimas}</tbody>
+        </table>
+      </div>`;
+  }
+
   async function cargarDashboard(forzar) {
     if (dashboardCargado && !forzar) return;
     const el = document.getElementById("dashboard-content");
-    if (!dashboardCargado) el.innerHTML = '<p class="loading">Cargando...</p>';
+
+    if (!dashboardCargado) {
+      const cacheLocal = leerCacheLocal("dashboard");
+      if (cacheLocal) {
+        renderDashboard(cacheLocal);
+      } else {
+        el.innerHTML = '<p class="loading">Cargando...</p>';
+      }
+    }
 
     try {
       const res = await fetch(`${API_URL}?action=dashboard`);
       const data = await res.json();
 
       if (!data.ok) {
-        el.innerHTML = `<div class="msg err">${data.error}</div>`;
+        if (!dashboardCargado) el.innerHTML = `<div class="msg err">${data.error}</div>`;
         return;
       }
 
-      const filasMes = data.porMes
-        .map(
-          (m) => `
-        <tr>
-          <td>${m.mes}</td>
-          <td class="num">${m.total}</td>
-          <td>${m.normal}</td>
-          <td>${m.corte}</td>
-          <td>${m.bodega}</td>
-          <td>${m.valparaiso}</td>
-          <td>${m.guia}</td>
-          <td>${m.nc}</td>
-        </tr>`
-        )
-        .join("");
-
-      const t = data.totalAnio;
-      const pt = data.porTipo;
-      const etiquetasTipo = [
-        ["normal", "Normal"],
-        ["corte", "Corte"],
-        ["viel", "Viel"],
-        ["sanignacio", "San Ignacio"],
-        ["sanfrancisco", "San Francisco"],
-        ["retiro", "Retiro"],
-        ["transporte", "Transporte"],
-        ["valparaiso", "Valparaíso"],
-        ["guia", "Guía"],
-        ["nc", "Nota de Crédito"],
-        ["boleta", "Boleta"],
-        ["otros", "Otros"],
-      ];
-      const filasPorTipo = etiquetasTipo
-        .map(([key, label]) => `<tr><td>${label}</td><td class="num">${pt[key]}</td></tr>`)
-        .join("");
-
-      const filasUltimas = data.ultimas
-        .map(
-          (f) => `<tr><td class="num">${f.numero}</td><td>${f.fecha}</td><td>${f.hora || "-"}</td><td class="obs">${f.observacion || "-"}</td></tr>`
-        )
-        .join("");
-
-      el.innerHTML = `
-        <div class="kpis">
-          <div class="kpi"><div class="num">${data.total}</div><div class="label">Facturas totales</div></div>
-          <div class="kpi"><div class="num">${data.esteMes}</div><div class="label">Este mes</div></div>
-        </div>
-
-        <div class="tabla-wrap" style="margin-bottom:20px;">
-          <div style="padding:16px 16px 0;">
-            <h2 style="font-size:15px; margin:0 0 2px;">Resumen anual ${data.anio}</h2>
-            <p class="sub" style="margin-bottom:12px;">Detalle mes a mes por tipo de factura.</p>
-          </div>
-          <table class="listado">
-            <thead>
-              <tr><th>Mes</th><th>Total</th><th>Normal</th><th>Corte</th><th>Bodega</th><th>Valparaíso</th><th>Guía</th><th>N/C</th></tr>
-            </thead>
-            <tbody>
-              ${filasMes}
-              <tr style="background:var(--bg); font-weight:700;">
-                <td>TOTAL AÑO</td><td>${t.total}</td><td>${t.normal}</td><td>${t.corte}</td><td>${t.bodega}</td><td>${t.valparaiso}</td><td>${t.guia}</td><td>${t.nc}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="tabla-wrap" style="margin-bottom:20px;">
-          <div style="padding:16px 16px 0;">
-            <h2 style="font-size:15px; margin:0 0 2px;">Facturas por tipo (histórico)</h2>
-            <p class="sub" style="margin-bottom:12px;">Una factura puede tener varios tipos a la vez, por eso la suma puede ser mayor al total de facturas.</p>
-          </div>
-          <table class="listado">
-            <thead><tr><th>Tipo</th><th>Cantidad</th></tr></thead>
-            <tbody>${filasPorTipo}</tbody>
-          </table>
-        </div>
-
-        <div class="tabla-wrap">
-          <div style="padding:16px 16px 0;">
-            <h2 style="font-size:15px; margin:0 0 12px;">Últimas registradas</h2>
-          </div>
-          <table class="listado">
-            <thead><tr><th>N°</th><th>Fecha</th><th>Hora</th><th>Observación</th></tr></thead>
-            <tbody>${filasUltimas}</tbody>
-          </table>
-        </div>`;
+      renderDashboard(data);
+      guardarCacheLocal("dashboard", data);
       dashboardCargado = true;
     } catch (err) {
-      el.innerHTML = `<div class="msg err">Error de conexión: ${err.message}</div>`;
+      if (!dashboardCargado) el.innerHTML = `<div class="msg err">Error de conexión: ${err.message}</div>`;
     }
   }
   // ----- Editar / Eliminar -----
