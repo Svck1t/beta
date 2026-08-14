@@ -214,6 +214,7 @@
   .badge-proceso { background: #fde8d8; color: #9a3b12; }
   .badge-documento { background: #dbe4fc; color: #1d4ed8; }
   .badge-nc { background: #fee2e2; color: #b91c1c; }
+  .badge-aldunate { background: var(--bg); color: var(--ink-dim); border: 1px solid var(--panel-border); }
   table.listado td.obs { white-space: normal; color: var(--ink-dim); max-width: 220px; }
   table.listado .resultados-count { padding: 12px 14px; font-size: 13px; color: var(--ink-dim); }
 
@@ -605,7 +606,6 @@
   let registrosCache = null; // se llena la primera vez que se abre "Buscar"
 
   // ----- Tags (Bodega / Proceso / Documento) -----
-  const TAGS_CONOCIDOS = ["CORTE", "VIEL", "SAN IGNACIO", "SAN FRANCISCO", "RETIRO", "TRANSPORTE", "VALPARAISO", "GUIA", "BOLETA", "N/C", "N/C P"];
   const GRIDS_INGRESAR = ["tags-ingresar-bodega", "tags-ingresar-proceso", "tags-ingresar-doc"];
   const GRIDS_MODAL = ["tags-modal-bodega", "tags-modal-proceso", "tags-modal-doc"];
 
@@ -637,44 +637,6 @@
 
   function limpiarTags(gridIds) {
     marcarTags(gridIds, []);
-  }
-
-  // Arma el texto final que se guarda en la planilla: "TAG1, TAG2 - texto libre"
-  function construirObservacion(tags, textoLibre) {
-    const partes = [];
-    if (tags.length) partes.push(tags.join(", "));
-    if (textoLibre.trim()) partes.push(textoLibre.trim());
-    return partes.join(" - ");
-  }
-
-  // Detecta qué tags (sin contar N/C, que se maneja aparte) aparecen en un texto existente
-  function detectarTags(texto) {
-    const o = (texto || "").toUpperCase();
-    const encontrados = [];
-    if (/VALPARAISO|VALAPARAISO|VALPO/.test(o)) encontrados.push("VALPARAISO");
-    if (/GUIA|GUÍA/.test(o)) encontrados.push("GUIA");
-    if (o.includes("BOLETA")) encontrados.push("BOLETA");
-    if (o.includes("VIEL")) encontrados.push("VIEL");
-    if (/SAN IGNACIO|SN IGNACIO/.test(o)) encontrados.push("SAN IGNACIO");
-    if (o.includes("SAN FRANCISCO")) encontrados.push("SAN FRANCISCO");
-    if (o.includes("TRANSPORTE")) encontrados.push("TRANSPORTE");
-    if (/RETIRO|RETIRA/.test(o)) encontrados.push("RETIRO");
-    if (o.includes("CORTE")) encontrados.push("CORTE");
-    return encontrados;
-  }
-
-  // Detecta si el texto trae Nota de Crédito (Total o Parcial) y trata de rescatar el motivo ya guardado
-  function detectarNC(texto) {
-    const o = (texto || "").toUpperCase();
-    let valor = "";
-    if (/\bN\/?C\s*P\b/.test(o)) valor = "N/C P";
-    else if (/\bN\/?C\b/.test(o) || o.includes("REFACT")) valor = "N/C";
-
-    let motivo = "";
-    const match = (texto || "").match(/Motivo NC:\s*(.+)$/i);
-    if (match) motivo = match[1].trim();
-
-    return { valor, motivo };
   }
 
   // ----- Navegación entre tabs -----
@@ -722,10 +684,11 @@
       numero: document.getElementById("numero").value.trim(),
       fecha: document.getElementById("fecha").value,
       hora: horaActual,
-      observacion: construirObservacion(
-        tagsSeleccionados(GRIDS_INGRESAR),
-        document.getElementById("observacion").value
-      ),
+      bodega: tagsSeleccionados(["tags-ingresar-bodega"]).join(", "),
+      proceso: tagsSeleccionados(["tags-ingresar-proceso"]).join(", "),
+      documento: tagsSeleccionados(["tags-ingresar-doc"]).join(", "),
+      nc: "",
+      observacion: document.getElementById("observacion").value.trim(),
     };
 
     try {
@@ -752,6 +715,10 @@
           fechaISO: payload.fecha,
           dia: DIAS[fechaObj.getDay()],
           hora: payload.hora,
+          bodega: payload.bodega,
+          proceso: payload.proceso,
+          documento: payload.documento,
+          nc: payload.nc,
           observacion: payload.observacion,
           mes: MESES[mes - 1],
           anio: anio,
@@ -818,14 +785,20 @@
         <tbody>
           ${registros
             .map((r) => {
-              const d = desglosarObservacion(r.observacion);
+              const d = {
+                bodega: (r.bodega || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
+                proceso: (r.proceso || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
+                documento: (r.documento || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
+                nc: r.nc === "N/C" ? "N/C Total" : r.nc === "N/C P" ? "N/C Parcial" : "",
+                especifica: (r.observacion || "").replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim(),
+              };
               return `
             <tr>
               <td class="num" style="vertical-align:top;">${r.numero}</td>
               <td style="vertical-align:top;">${r.fecha}</td>
               <td style="vertical-align:top;">${r.dia || "-"}</td>
               <td style="vertical-align:top;">${r.hora || "-"}</td>
-              <td style="vertical-align:top;">${celdaApilada(d.bodega, "badge-bodega")}</td>
+              <td style="vertical-align:top;">${d.bodega.length ? celdaApilada(d.bodega, "badge-bodega") : '<span class="badge badge-aldunate">Aldunate</span>'}</td>
               <td style="vertical-align:top;">${celdaApilada(d.proceso, "badge-proceso")}</td>
               <td style="vertical-align:top;">${celdaApilada(d.documento, "badge-documento")}</td>
               <td style="vertical-align:top;">${d.nc ? `<span class="badge badge-nc">${d.nc}</span>` : "-"}</td>
@@ -963,7 +936,11 @@
       const coincideTexto =
         !t ||
         String(r.numero).toLowerCase().includes(t) ||
-        (r.observacion || "").toLowerCase().includes(t);
+        (r.observacion || "").toLowerCase().includes(t) ||
+        (r.bodega || "").toLowerCase().includes(t) ||
+        (r.proceso || "").toLowerCase().includes(t) ||
+        (r.documento || "").toLowerCase().includes(t) ||
+        (r.nc || "").toLowerCase().includes(t);
       const coincideFecha = !f || r.fechaISO === f;
       return coincideTexto && coincideFecha;
     });
@@ -1098,50 +1075,11 @@
   const modalGuardar = document.getElementById("modal-guardar");
   let numeroEnEdicion = null;
 
-  // Separa una observación existente en tags detectados + texto libre restante
-  function parseObservacionParaEditar(obsTexto) {
-    const texto = (obsTexto || "").trim();
-    const tagsDetectados = detectarTags(texto);
-
-    // Si sigue nuestro propio formato "TAG1, TAG2 - resto", separamos limpio
-    const match = texto.match(/^([^-]+?)\s-\s(.*)$/);
-    let libre = texto;
-    if (match) {
-      const candidatos = match[1].split(",").map((s) => s.trim().toUpperCase());
-      const todasConocidas = candidatos.length > 0 && candidatos.every((c) => TAGS_CONOCIDOS.includes(c));
-      if (todasConocidas) libre = match[2].trim();
-    } else {
-      // No hay " - ": si el texto completo son solo tags conocidos (sin texto libre), no hay nada que mostrar aparte
-      const candidatos = texto.split(",").map((s) => s.trim().toUpperCase());
-      const todasConocidas = candidatos.length > 0 && candidatos.every((c) => TAGS_CONOCIDOS.includes(c));
-      if (todasConocidas) libre = "";
-    }
-    return { tags: tagsDetectados, libre };
-  }
-
-  // Separa una observación en columnas: bodega / proceso / documento / N-C / específica
+  // Etiquetas bonitas para mostrar en el listado (los valores guardados son códigos en mayúscula)
   const ETIQUETA_BONITA = {
     CORTE: "Corte", VIEL: "Viel", "SAN IGNACIO": "San Ignacio", "SAN FRANCISCO": "San Francisco",
     RETIRO: "Retiro", TRANSPORTE: "Transporte", VALPARAISO: "Valparaíso", GUIA: "Guía", BOLETA: "Boleta",
   };
-  const COL_BODEGA = ["VIEL", "SAN IGNACIO", "SAN FRANCISCO"];
-  const COL_PROCESO = ["CORTE", "RETIRO", "TRANSPORTE", "VALPARAISO"];
-  const COL_DOCUMENTO = ["GUIA", "BOLETA"];
-
-  function desglosarObservacion(obsTexto) {
-    const tags = detectarTags(obsTexto);
-    const { valor: ncValor } = detectarNC(obsTexto);
-    const { libre } = parseObservacionParaEditar(obsTexto);
-    const especifica = libre.replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim();
-
-    return {
-      bodega: tags.filter((t) => COL_BODEGA.includes(t)).map((t) => ETIQUETA_BONITA[t]),
-      proceso: tags.filter((t) => COL_PROCESO.includes(t)).map((t) => ETIQUETA_BONITA[t]),
-      documento: tags.filter((t) => COL_DOCUMENTO.includes(t)).map((t) => ETIQUETA_BONITA[t]),
-      nc: ncValor === "N/C" ? "N/C Total" : ncValor === "N/C P" ? "N/C Parcial" : "",
-      especifica,
-    };
-  }
 
   function celdaApilada(items, claseBadge) {
     if (!items || items.length === 0) return "-";
@@ -1177,16 +1115,22 @@
     if (!registro) return;
     numeroEnEdicion = numero;
 
-    const { tags, libre } = parseObservacionParaEditar(registro.observacion);
-    const { valor: ncValor, motivo: ncMotivo } = detectarNC(registro.observacion);
+    const tags = [
+      ...(registro.bodega || "").split(",").map((s) => s.trim()).filter(Boolean),
+      ...(registro.proceso || "").split(",").map((s) => s.trim()).filter(Boolean),
+      ...(registro.documento || "").split(",").map((s) => s.trim()).filter(Boolean),
+    ];
+    const ncValor = registro.nc || "";
+    const ncMatch = (registro.observacion || "").match(/Motivo NC:\s*(.+)$/i);
+    const ncMotivo = ncMatch ? ncMatch[1].trim() : "";
+    const libre = (registro.observacion || "").replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim();
 
     document.getElementById("modal-numero").textContent = registro.numero;
     document.getElementById("modal-fecha").value = registro.fechaISO || "";
     document.getElementById("modal-hora").value = registro.hora || "";
     marcarTags(GRIDS_MODAL, tags);
 
-    // Quitar del texto libre el fragmento "Motivo NC: ..." si quedó ahí, para no duplicarlo
-    document.getElementById("modal-observacion").value = libre.replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim();
+    document.getElementById("modal-observacion").value = libre;
 
     selectNC.value = ncValor;
     const activo = ncValor !== "";
@@ -1251,15 +1195,14 @@
     const fechaVal = document.getElementById("modal-fecha").value;
     const horaVal = document.getElementById("modal-hora").value;
 
-    const tagsFinal = tagsSeleccionados(GRIDS_MODAL);
-    if (ncValor) tagsFinal.push(ncValor);
+    const bodegaVal = tagsSeleccionados(["tags-modal-bodega"]).join(", ");
+    const procesoVal = tagsSeleccionados(["tags-modal-proceso"]).join(", ");
+    const documentoVal = tagsSeleccionados(["tags-modal-doc"]).join(", ");
 
     let libreFinal = document.getElementById("modal-observacion").value.trim();
     if (ncValor && motivoFinal) {
       libreFinal = (libreFinal ? libreFinal + " | " : "") + "Motivo NC: " + motivoFinal;
     }
-
-    const obsVal = construirObservacion(tagsFinal, libreFinal);
 
     try {
       const res = await fetch(API_URL, {
@@ -1270,7 +1213,11 @@
           numero: numeroEnEdicion,
           fecha: fechaVal,
           hora: horaVal,
-          observacion: obsVal,
+          bodega: bodegaVal,
+          proceso: procesoVal,
+          documento: documentoVal,
+          nc: ncValor,
+          observacion: libreFinal,
         }),
       });
       const data = await res.json();
@@ -1292,7 +1239,11 @@
           fechaISO: fechaVal,
           dia: DIAS[fechaObj.getDay()],
           hora: horaVal,
-          observacion: obsVal,
+          bodega: bodegaVal,
+          proceso: procesoVal,
+          documento: documentoVal,
+          nc: ncValor,
+          observacion: libreFinal,
           mes: MESES[mes - 1],
           anio: anio,
         };
