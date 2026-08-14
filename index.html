@@ -790,7 +790,7 @@
                 proceso: String(r.proceso || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
                 documento: String(r.documento || "").split(",").map((s) => s.trim()).filter(Boolean).map((t) => ETIQUETA_BONITA[t] || t),
                 nc: r.nc === "N/C" ? "N/C Total" : r.nc === "N/C P" ? "N/C Parcial" : "",
-                especifica: (r.observacion || "").replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim(),
+                especifica: String(r.observacion || "").replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim(),
               };
               return `
             <tr>
@@ -936,7 +936,7 @@
       const coincideTexto =
         !t ||
         String(r.numero).toLowerCase().includes(t) ||
-        (r.observacion || "").toLowerCase().includes(t) ||
+        String(r.observacion || "").toLowerCase().includes(t) ||
         String(r.bodega || "").toLowerCase().includes(t) ||
         String(r.proceso || "").toLowerCase().includes(t) ||
         String(r.documento || "").toLowerCase().includes(t) ||
@@ -1121,9 +1121,9 @@
       ...String(registro.documento || "").split(",").map((s) => s.trim()).filter(Boolean),
     ];
     const ncValor = registro.nc || "";
-    const ncMatch = (registro.observacion || "").match(/Motivo NC:\s*(.+)$/i);
+    const ncMatch = String(registro.observacion || "").match(/Motivo NC:\s*(.+)$/i);
     const ncMotivo = ncMatch ? ncMatch[1].trim() : "";
-    const libre = (registro.observacion || "").replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim();
+    const libre = String(registro.observacion || "").replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim();
 
     document.getElementById("modal-numero").textContent = registro.numero;
     document.getElementById("modal-fecha").value = registro.fechaISO || "";
