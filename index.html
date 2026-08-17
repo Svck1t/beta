@@ -591,8 +591,8 @@
         <label style="margin-top:0;">Nota de Crédito</label>
         <select id="modal-nc">
           <option value="">Sin Nota de Crédito</option>
-          <option value="N/C">Nota de Crédito Total</option>
-          <option value="N/C P">Nota de Crédito Parcial</option>
+          <option value="Completa">Nota de Crédito Total</option>
+          <option value="Parcial">Nota de Crédito Parcial</option>
         </select>
 
         <div id="modal-nc-motivo-wrap" style="display:none;">
@@ -830,6 +830,7 @@
             <th>Proceso</th>
             <th>Documento</th>
             <th>N/C</th>
+            <th>Motivo N/C</th>
             <th>Específica</th>
             <th>Acciones</th>
           </tr>
@@ -845,8 +846,8 @@
                   bodega: String(r.bodega || "").split(",").map((s) => s.trim().toUpperCase()).filter((t) => BODEGA_VALIDAS.includes(t)).map((t) => ETIQUETA_BONITA[t] || t),
                   proceso: String(r.proceso || "").split(",").map((s) => s.trim().toUpperCase()).filter((t) => PROCESO_VALIDAS.includes(t)).map((t) => ETIQUETA_BONITA[t] || t),
                   documento: String(r.documento || "").split(",").map((s) => s.trim().toUpperCase()).filter((t) => DOCUMENTO_VALIDAS.includes(t)).map((t) => ETIQUETA_BONITA[t] || t),
-                  nc: r.nc === "N/C" ? "N/C Total" : r.nc === "N/C P" ? "N/C Parcial" : "",
-                  especifica: String(r.observacion || "").replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim(),
+                  nc: r.nc === "Completa" ? "N/C Total" : r.nc === "Parcial" ? "N/C Parcial" : "",
+                  especifica: String(r.observacion || "").trim(),
                 };
                 return `
             <tr>
@@ -858,6 +859,7 @@
               <td style="vertical-align:top;">${celdaApilada(d.proceso, "badge-proceso")}</td>
               <td style="vertical-align:top;">${celdaApilada(d.documento, "badge-documento")}</td>
               <td style="vertical-align:top;">${d.nc ? `<span class="badge badge-nc">${d.nc}</span>` : "-"}</td>
+              <td style="vertical-align:top;">${r.motivoNc || "-"}</td>
               <td class="obs" style="vertical-align:top;">${d.especifica || "-"}</td>
               <td class="acciones-cell" style="vertical-align:top;">
                 <button class="btn-mini btn-editar" data-numero="${r.numero}">Editar</button>
@@ -1225,14 +1227,13 @@
     numeroEnEdicion = numero;
 
     const tags = [
-      ...String(registro.bodega || "").split(",").map((s) => s.trim()).filter(Boolean),
+      ...String(registro.bodega || "").split(",").map((s) => s.trim()).filter((t) => t && t !== "ALDUNATE"),
       ...String(registro.proceso || "").split(",").map((s) => s.trim()).filter(Boolean),
       ...String(registro.documento || "").split(",").map((s) => s.trim()).filter(Boolean),
     ];
     const ncValor = registro.nc || "";
-    const ncMatch = String(registro.observacion || "").match(/Motivo NC:\s*(.+)$/i);
-    const ncMotivo = ncMatch ? ncMatch[1].trim() : "";
-    const libre = String(registro.observacion || "").replace(/\s*\|?\s*Motivo NC:.*$/i, "").trim();
+    const ncMotivo = registro.motivoNc || "";
+    const libre = String(registro.observacion || "").trim();
 
     document.getElementById("modal-numero").textContent = registro.numero;
     document.getElementById("modal-fecha").value = registro.fechaISO || "";
@@ -1308,11 +1309,7 @@
     const bodegaVal = tagsSeleccionados(["tags-modal-bodega"]).join(", ");
     const procesoVal = tagsSeleccionados(["tags-modal-proceso"]).join(", ");
     const documentoVal = tagsSeleccionados(["tags-modal-doc"]).join(", ");
-
-    let libreFinal = document.getElementById("modal-observacion").value.trim();
-    if (ncValor && motivoFinal) {
-      libreFinal = (libreFinal ? libreFinal + " | " : "") + "Motivo NC: " + motivoFinal;
-    }
+    const libreFinal = document.getElementById("modal-observacion").value.trim();
 
     try {
       const res = await fetch(API_URL, {
@@ -1327,6 +1324,7 @@
           proceso: procesoVal,
           documento: documentoVal,
           nc: ncValor,
+          motivoNc: motivoFinal,
           observacion: libreFinal,
           prioritario: document.getElementById("modal-prioritario").checked,
         }),
@@ -1354,6 +1352,7 @@
           proceso: procesoVal,
           documento: documentoVal,
           nc: ncValor,
+          motivoNc: motivoFinal,
           observacion: libreFinal,
           prioritario: document.getElementById("modal-prioritario").checked,
           mes: MESES[mes - 1],
